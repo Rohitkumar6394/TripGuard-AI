@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TripGuard AI — Complete Documentation</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-soft: #1e293b;
+      --card: #ffffff;
+      --text: #e2e8f0;
+      --heading: #f8fafc;
+      --accent: #22d3ee;
+      --accent-2: #6366f1;
+      --border: #334155;
+      --code-bg: #0b1220;
+      --code-text: #a5f3fc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+    .container { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+    header.hero {
+      text-align: center;
+      padding: 48px 24px;
+      background: linear-gradient(135deg, rgba(34,211,238,.14), rgba(99,102,241,.18));
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+    .hero h1 {
+      font-size: 2.4rem;
+      color: var(--heading);
+      letter-spacing: -0.5px;
+    }
+    .hero .badge {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(34,211,238,.12);
+      border: 1px solid rgba(34,211,238,.4);
+      color: var(--accent);
+      font-size: .9rem;
+      font-weight: 600;
+    }
+    .hero p { max-width: 720px; margin: 16px auto 0; color: #cbd5e1; }
+    nav.toc {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+    nav.toc h2 { color: var(--heading); font-size: 1.1rem; margin-bottom: 12px; }
+    nav.toc ol { padding-left: 20px; columns: 2; column-gap: 48px; }
+    nav.toc a { color: var(--accent); text-decoration: none; }
+    nav.toc a:hover { text-decoration: underline; }
+    section {
+      background: var(--card);
+      color: #0f172a;
+      border-radius: 14px;
+      padding: 28px 30px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    section h2 {
+      color: #0f172a;
+      font-size: 1.5rem;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      border-bottom: 3px solid var(--accent-2);
+      display: inline-block;
+    }
+    section h3 { color: #1e293b; margin: 20px 0 10px; font-size: 1.1rem; }
+    section p, section li { color: #334155; }
+    section ul, section ol { padding-left: 22px; margin: 10px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: .92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+    }
+    th { background: #eef2f7; color: #0f172a; font-weight: 600; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      padding: 16px 18px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', Consolas, 'Courier New', monospace;
+      font-size: .85rem;
+      line-height: 1.6;
+      margin: 14px 0;
+    }
+    code {
+      background: #eef2f7;
+      color: #be185d;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-family: 'Cascadia Code', Consolas, monospace;
+      font-size: .87em;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    .arch {
+      background: #f8fafc;
+      border: 1px dashed #94a3b8;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      font-family: 'Cascadia Code', Consolas, monospace;
+      font-size: .85rem;
+      color: #475569;
+      margin: 14px 0;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .card h4 { color: #0f172a; margin-bottom: 6px; }
+    .card p, .card li { font-size: .9rem; }
+    footer {
+      text-align: center;
+      color: #64748b;
+      font-size: .85rem;
+      margin-top: 20px;
+    }
+    .note {
+      background: #fff7ed;
+      border-left: 4px solid #f97316;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 12px 0;
+      font-size: .9rem;
+    }
+    @media (max-width: 720px) {
+      nav.toc ol { columns: 1; }
+      .grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="hero">
+    <h1>TripGuard AI</h1>
+    <span class="badge">Complete Project Documentation</span>
+    <p>AI-powered travel safety and planning platform with personalized trip plans, day-wise itinerary, budget estimation, hotel suggestions, weather insights, risk/safety analysis, and an integrated safety chatbot — all managed from a single dashboard.</p>
+  </header>
+
+  <div class="container">
+
+    <nav class="toc">
+      <h2>Table of Contents</h2>
+      <ol>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#tech-stack">Tech Stack</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#structure">Project Structure</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#api">Backend API Reference</a></li>
+        <li><a href="#models">Data Models</a></li>
+        <li><a href="#auth">Authentication</a></li>
+        <li><a href="#trips">Trip Plan Generation</a></li>
+        <li><a href="#weather">Weather Service</a></li>
+        <li><a href="#chatbot">Safety Chatbot</a></li>
+        <li><a href="#frontend">Frontend Pages &amp; Routing</a></li>
+        <li><a href="#env">Environment Variables</a></li>
+        <li><a href="#setup">Setup &amp; Running</a></li>
+        <li><a href="#security">Security Notes</a></li>
+        <li><a href="#roadmap">Roadmap Ideas</a></li>
+      </ol>
+    </nav>
+
+    <section id="overview">
+      <h2>1. Overview</h2>
+      <p>TripGuard AI combines travel planning with safety analysis. The core user journey:</p>
+      <ol>
+        <li>Users sign up / log in with email + password.</li>
+        <li>They submit a trip form (origin, destination, dates, budget, transport, travel type, number of people, and preferences).</li>
+        <li>The backend generates a <strong>deterministic demo plan</strong> containing an optimized day-wise itinerary, cost breakdown, hotel suggestions, weather insight, safety score with alerts, and emergency contact info.</li>
+        <li>Results are saved to MongoDB and shown in the dashboard.</li>
+        <li>A <strong>Safety Chatbot</strong> answers travel-safety questions in the context of the user's saved trip (emergency numbers, night travel, documents, transport, live weather).</li>
+      </ol>
+      <div class="note">
+        <strong>Note:</strong> The current trip generator uses deterministic demo logic, not a live AI/LLM provider. A real provider can be connected later without changing the MongoDB structure.
+      </div>
+    </section>
+
+    <section id="tech-stack">
+      <h2>2. Tech Stack</h2>
+      <table>
+        <tr><th>Layer</th><th>Technology</th></tr>
+        <tr><td>Frontend</td><td>React 19, React Router 7, Vite 8, Tailwind CSS 4, Framer Motion, lucide-react (icons)</td></tr>
+        <tr><td>Backend</td><td>Node.js (native <code>node:http</code> server — no framework), Mongoose 8</td></tr>
+        <tr><td>Database</td><td>MongoDB (Atlas or local)</td></tr>
+        <tr><td>Auth</td><td>Custom HMAC-signed tokens (JWT-style), passwords hashed with <code>scrypt</code></td></tr>
+        <tr><td>Weather</td><td>Open-Meteo (geocoding + forecast), server-side proxy</td></tr>
+      </table>
+    </section>
+
+    <section id="architecture">
+      <h2>3. Architecture</h2>
+      <h3>High-level flow</h3>
+      <div class="arch">React Frontend (Vite, port 5173)
+     │   fetch with Bearer token
+     ▼
+Node.js Backend (native HTTP, port 4000)
+     │   Mongoose
+     ▼
+MongoDB  (database: tripguard_ai)</div>
+      <h3>Trip planning flow</h3>
+      <div class="arch">Sign in
+  →  Fill Trip Plan form
+  →  POST /api/trips
+  →  Backend validates input
+  →  Backend generates itinerary / budget / hotels / safety data
+  →  Trip saved to MongoDB
+  →  Frontend renders the full plan</div>
+    </section>
+
+    <section id="structure">
+      <h2>4. Project Structure</h2>
+      <pre><code>TripGuard AI/
+├── SETUP_MONGODB.md        # MongoDB + environment setup guide
+├── README.md               # Main readme
+├── doc/                    # This documentation
+│   └── TRIPGUARD-AI-DOCUMENTATION.html
+├── backend/
+│   ├── .env.example        # Backend environment template
+│   ├── server.js           # Entire API (models, auth, routes, logic)
+│   └── package.json
+└── frontend/
+    ├── .env.example        # VITE_API_URL template
+    ├── index.html
+    ├── vite.config.js
+    ├── eslint.config.js
+    ├── package.json
+    └── src/
+        ├── main.jsx            # React entry point
+        ├── App.jsx             # Router + protected routes
+        ├── index.css           # Global styles + theme variables
+        ├── lib/
+        │   └── api.js          # fetch wrapper with auth token
+        ├── components/
+        │   ├── Navbar.jsx      # Navigation + theme switcher + logout
+        │   └── Footer.jsx
+        ├── pages/
+        │   ├── HomePage.jsx            # Landing page
+        │   ├── AuthPage.jsx            # Login / Signup (shared)
+        │   ├── SignupPage.jsx          # Renders AuthPage in signup mode
+        │   ├── DashboardPage.jsx       # Trips, weather, safety links
+        │   ├── PlanPage.jsx            # Trip form + full result display
+        │   └── SafetyChatbotPage.jsx   # Context-aware safety chat
+        ├── state/theme/                # Light / Dark / System theme
+        │   ├── ThemeContext.js
+        │   ├── ThemeProvider.jsx
+        │   └── useTheme.js
+        └── ui/
+            └── AppShell.jsx            # Navbar + content + Footer layout</code></pre>
+    </section>
+
+    <section id="features">
+      <h2>5. Features</h2>
+      <table>
+        <tr><th>Feature</th><th>Description</th></tr>
+        <tr><td><strong>AI Trip Planning</strong></td><td>Personalized plan from destination, dates, budget, and interests.</td></tr>
+        <tr><td><strong>AI Itinerary</strong></td><td>Day-by-day itinerary with activities and travel suggestions.</td></tr>
+        <tr><td><strong>Budget Planner</strong></td><td>Estimates accommodation, food, local transport, activities, travel, and miscellaneous costs.</td></tr>
+        <tr><td><strong>Safety / Risk Analysis</strong></td><td>Safety score (78–88 based on input), risk alerts, precautions, and emergency contacts.</td></tr>
+        <tr><td><strong>Weather</strong></td><td>Live forecast fetched from Open-Meteo for the destination.</td></tr>
+        <tr><td><strong>Safety Chatbot</strong></td><td>Answers safety questions using the context of a saved trip.</td></tr>
+        <tr><td><strong>Hotels</strong></td><td>Three demo hotel suggestions with ratings, prices, and Google Maps links.</td></tr>
+        <tr><td><strong>Dashboard</strong></td><td>Saved trips, stat cards, quick weather check, and quick links.</td></tr>
+      </table>
+    </section>
+
+    <section id="api">
+      <h2>6. Backend API Reference</h2>
+      <p>Base URL: <code>http://localhost:4000</code></p>
+      <table>
+        <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+        <tr><td>POST</td><td><code>/api/auth/signup</code></td><td>No</td><td>Create an account. Body: <code>{ name, email, password }</code></td></tr>
+        <tr><td>POST</td><td><code>/api/auth/login</code></td><td>No</td><td>Log in. Body: <code>{ email, password }</code></td></tr>
+        <tr><td>GET</td><td><code>/api/auth/me</code></td><td>Yes</td><td>Current authenticated user.</td></tr>
+        <tr><td>GET</td><td><code>/api/health</code></td><td>No</td><td>Health check: <code>{ ok, database }</code>.</td></tr>
+        <tr><td>GET</td><td><code>/api/weather?location=...</code></td><td>No</td><td>Live weather + 5-day forecast (Open-Meteo).</td></tr>
+        <tr><td>POST</td><td><code>/api/chat</code></td><td>Yes</td><td>Safety question. Body: <code>{ message, tripId? }</code></td></tr>
+        <tr><td>POST</td><td><code>/api/trips</code></td><td>Yes</td><td>Create a trip plan. Body: <code>{ origin, destination, startDate, endDate, budget, transportMode, travelType, people, preferences, fullName?, email? }</code></td></tr>
+        <tr><td>GET</td><td><code>/api/trips</code></td><td>Yes</td><td>List user's trips (newest first).</td></tr>
+        <tr><td>GET</td><td><code>/api/trips/:id</code></td><td>Yes</td><td>Get one of the user's trips.</td></tr>
+      </table>
+      <h3>Validation rules</h3>
+      <ul>
+        <li>Origin, destination, start date, and end date are required.</li>
+        <li>End date must be on or after the start date.</li>
+        <li>Passwords must be at least 6 characters.</li>
+      </ul>
+      <div class="note"><strong>All bodies use JSON.</strong> Responses include CORS headers for <code>CLIENT_ORIGIN</code>.</div>
+    </section>
+
+    <section id="models">
+      <h2>7. Data Models</h2>
+      <h3>users</h3>
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+        <tr><td><code>name</code></td><td>string</td><td>required</td></tr>
+        <tr><td><code>email</code></td><td>string</td><td>required, unique, lowercased</td></tr>
+        <tr><td><code>password</code></td><td>string</td><td>required, scrypt hash <code>salt:hash</code></td></tr>
+      </table>
+      <p>Auto-fields: <code>createdAt</code>, <code>updatedAt</code>.</p>
+
+      <h3>trips</h3>
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+        <tr><td><code>userId</code></td><td>ObjectId</td><td>ref <code>User</code>, indexed</td></tr>
+        <tr><td><code>fullName</code>, <code>email</code></td><td>string</td><td>snapshot for the plan</td></tr>
+        <tr><td><code>origin</code>, <code>destination</code></td><td>string</td><td>required</td></tr>
+        <tr><td><code>startDate</code>, <code>endDate</code></td><td>Date</td><td>required</td></tr>
+        <tr><td><code>budget</code></td><td>number</td><td>default <code>0</code></td></tr>
+        <tr><td><code>transportMode</code></td><td>string</td><td>default <code>"Flight"</code></td></tr>
+        <tr><td><code>travelType</code></td><td>string</td><td>default <code>"Solo"</code></td></tr>
+        <tr><td><code>people</code></td><td>number</td><td>default <code>1</code></td></tr>
+        <tr><td><code>preferences</code></td><td>string</td><td>default <code>""</code></td></tr>
+        <tr><td><code>itineraryId</code></td><td>string</td><td>required, unique</td></tr>
+        <tr><td><code>weatherInsights</code></td><td>string</td><td></td></tr>
+        <tr><td><code>transportDetails</code></td><td>string</td><td></td></tr>
+        <tr><td><code>hotels</code></td><td>array</td><td>demo hotel cards</td></tr>
+        <tr><td><code>costPredictor</code></td><td>string</td><td>budget breakdown text</td></tr>
+        <tr><td><code>aiRecommendations</code></td><td>string</td><td></td></tr>
+        <tr><td><code>safetyScore</code></td><td>number</td><td>default <code>85</code></td></tr>
+        <tr><td><code>safetyAlerts</code></td><td>array</td><td></td></tr>
+        <tr><td><code>emergencyInfo</code></td><td>array</td><td>e.g. Emergency 112, Police 100, Ambulance 108</td></tr>
+        <tr><td><code>optimizedItinerary</code></td><td>array</td><td>one string per day</td></tr>
+      </table>
+      <p>Auto-fields: <code>createdAt</code>, <code>updatedAt</code>. Collections are created automatically by Mongoose.</p>
+    </section>
+
+    <section id="auth">
+      <h2>8. Authentication</h2>
+      <ul>
+        <li>Passwords are hashed with Node's <code>scrypt</code> (per-user random salt) and compared with <code>timingSafeEqual</code>.</li>
+        <li>A custom token is created: base64url JSON payload <code>{ sub, exp }</code> + HMAC-SHA256 signature using <code>TOKEN_SECRET</code>. Expiry: 7 days.</li>
+        <li>The frontend sends the token as <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+        <li>The frontend stores auth state in <code>localStorage</code>:</li>
+      </ul>
+      <table>
+        <tr><th>Key</th><th>Value</th></tr>
+        <tr><td><code>tripguard-auth-token</code></td><td>the bearer token</td></tr>
+        <tr><td><code>tripguard-authenticated</code></td><td><code>"true"</code> flag</td></tr>
+        <tr><td><code>tripguard-user</code></td><td>JSON user object</td></tr>
+      </table>
+      <p>Protected routes in the frontend redirect unauthenticated users to <code>/login</code>.</p>
+    </section>
+
+    <section id="trips">
+      <h2>9. Trip Plan Generation</h2>
+      <p>The backend's <code>buildTripPlan(input)</code> function produces a deterministic demo plan:</p>
+      <h3>Cost estimation formulas</h3>
+      <div class="grid">
+        <div class="card">
+          <h4>Component</h4>
+          <ul>
+            <li>Accommodation</li>
+            <li>Food</li>
+            <li>Local Transport</li>
+            <li>Sightseeing &amp; Activities</li>
+            <li>Round Trip Travel</li>
+            <li>Miscellaneous</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Formula</h4>
+          <ul>
+            <li><code>95 × days</code></li>
+            <li><code>40 × days × people</code></li>
+            <li><code>25 × days × people</code></li>
+            <li><code>45 × days × people</code></li>
+            <li><code>250 × people</code></li>
+            <li><code>10% of subtotal</code></li>
+          </ul>
+        </div>
+      </div>
+      <h3>Output</h3>
+      <ul>
+        <li><code>itineraryId</code> — <code>trip-&lt;uuid&gt;</code>, unique per trip.</li>
+        <li><code>safetyScore</code> — <code>78</code> if preferences mention "adventure", otherwise <code>88</code>.</li>
+        <li><code>safetyAlerts</code> — three standard travel-safety alerts.</li>
+        <li><code>emergencyInfo</code> — Emergency <code>112</code>, Police <code>100</code>, Ambulance <code>108</code>.</li>
+        <li><code>hotels</code> — three demo hotels (Grand Hotel / Comfort Stay / Premium Resort) with Google Maps links.</li>
+        <li><code>optimizedItinerary</code> — one entry per travel day.</li>
+      </ul>
+    </section>
+
+    <section id="weather">
+      <h2>10. Weather Service</h2>
+      <p>The backend proxies Open-Meteo (no API key required):</p>
+      <ol>
+        <li>Geocoding lookup: <code>https://geocoding-api.open-meteo.com/v1/search?name={query}</code></li>
+        <li>Forecast fetch: <code>https://api.open-meteo.com/v1/forecast?latitude=..&amp;longitude=..</code> for current temperature, wind, weather code, and 5-day daily forecast.</li>
+        <li>Weather codes are mapped to human-readable conditions (Clear, Rain, Thunderstorm, etc.).</li>
+      </ol>
+      <p>Used by the dashboard quick weather check and by the chatbot's weather answers.</p>
+    </section>
+
+    <section id="chatbot">
+      <h2>11. Safety Chatbot</h2>
+      <p>POST <code>/api/chat</code> with a message and optional <code>tripId</code>. The reply engine is keyword-based:</p>
+      <table>
+        <tr><th>Keywords</th><th>Answer provides</th></tr>
+        <tr><td>emergency / police / ambulance</td><td>India emergency numbers (112, 100, 108) + embassy advice</td></tr>
+        <tr><td>night / dark</td><td>Night-safety advice for the trip destination</td></tr>
+        <tr><td>weather / rain / temperature</td><td>Live Open-Meteo weather for the destination</td></tr>
+        <tr><td>document / passport / carry</td><td>Documents &amp; essentials checklist</td></tr>
+        <tr><td>transport / taxi / cab</td><td>Verified transport safety tips</td></tr>
+        <tr><td>fallback</td><td>Uses the trip's safety score + first safety alert, else generic advice</td></tr>
+      </table>
+      <p>Trip lookup is scoped to the authenticated user: <code>Trip.findOne({ _id: tripId, userId })</code>.</p>
+    </section>
+
+    <section id="frontend">
+      <h2>12. Frontend Pages &amp; Routing</h2>
+      <table>
+        <tr><th>Route</th><th>Page</th><th>Access</th></tr>
+        <tr><td><code>/</code></td><td>HomePage — landing with hero, features, safety &amp; how-it-works sections</td><td>Public</td></tr>
+        <tr><td><code>/login</code></td><td>AuthPage — sign in</td><td>Public</td></tr>
+        <tr><td><code>/signup</code></td><td>SignupPage → AuthPage (signup mode)</td><td>Public</td></tr>
+        <tr><td><code>/dashboard</code></td><td>DashboardPage — stats, recent trips, weather, safety link</td><td>Protected</td></tr>
+        <tr><td><code>/plan</code></td><td>PlanPage — trip form + generated plan</td><td>Protected</td></tr>
+        <tr><td><code>/safety-chat</code></td><td>SafetyChatbotPage — assistant chat</td><td>Protected</td></tr>
+        <tr><td><code>*</code></td><td>Redirect to <code>/</code></td><td>—</td></tr>
+      </table>
+      <h3>Theme</h3>
+      <p><code>ThemeProvider</code> supports <strong>Light</strong>, <strong>Dark</strong> (default), and <strong>System</strong> modes via the <code>localStorage</code> key <code>tripguard-theme</code> and a <code>data-theme</code> attribute on <code>&lt;html&gt;</code>.</p>
+      <h3>API helper (<code>src/lib/api.js</code>)</h3>
+      <p><code>apiFetch(path, options)</code> prepends <code>VITE_API_URL</code> (default <code>http://localhost:4000</code>), attaches the auth token, and parses JSON errors.</p>
+    </section>
+
+    <section id="env">
+      <h2>13. Environment Variables</h2>
+      <h3>Backend — <code>backend/.env</code> (copy from <code>.env.example</code>)</h3>
+      <table>
+        <tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+        <tr><td><code>PORT</code></td><td><code>4000</code></td><td>API port</td></tr>
+        <tr><td><code>CLIENT_ORIGIN</code></td><td><code>http://localhost:5173</code></td><td>CORS allowed origin</td></tr>
+        <tr><td><code>MONGODB_URI</code></td><td><code>mongodb://127.0.0.1:27017/tripguard_ai</code></td><td>MongoDB connection string</td></tr>
+        <tr><td><code>TOKEN_SECRET</code></td><td><code>change-this-in-production</code></td><td>HMAC signing secret — change before deploying</td></tr>
+      </table>
+      <h3>Frontend — <code>frontend/.env</code> (copy from <code>.env.example</code>, optional)</h3>
+      <table>
+        <tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+        <tr><td><code>VITE_API_URL</code></td><td><code>http://localhost:4000</code></td><td>Backend base URL</td></tr>
+      </table>
+    </section>
+
+    <section id="setup">
+      <h2>14. Setup &amp; Running</h2>
+      <h3>Prerequisites</h3>
+      <ul>
+        <li>Node.js 18+ (20+ recommended)</li>
+        <li>MongoDB (Atlas cluster or local server)</li>
+      </ul>
+      <h3>1. Backend</h3>
+      <pre><code>cd "backend"
+npm install
+# copy .env.example to .env and set MONGODB_URI + TOKEN_SECRET
+npm run dev</code></pre>
+      <p>Expected output:</p>
+      <pre><code>MongoDB connected: tripguard_ai
+TripGuard API running at http://localhost:4000</code></pre>
+      <p>Health check: open <code>http://localhost:4000/api/health</code> → <code>{"ok":true,"database":"connected"}</code></p>
+      <h3>2. Frontend</h3>
+      <pre><code>cd "frontend"
+npm install
+npm run dev</code></pre>
+      <p>Frontend runs at <code>http://localhost:5173</code>.</p>
+      <h3>Scripts</h3>
+      <div class="grid">
+        <div class="card">
+          <h4>Backend</h4>
+          <ul>
+            <li><code>npm run dev</code> — watch mode (<code>node --watch server.js</code>)</li>
+            <li><code>npm start</code> — plain start</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Frontend</h4>
+          <ul>
+            <li><code>npm run dev</code> — Vite dev server</li>
+            <li><code>npm run build</code> — production build</li>
+            <li><code>npm run preview</code> — preview built output</li>
+            <li><code>npm run lint</code> — ESLint</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="security">
+      <h2>15. Security Notes</h2>
+      <ul>
+        <li>Never put <code>MONGODB_URI</code> or <code>TOKEN_SECRET</code> in the React frontend.</li>
+        <li>Never commit <code>backend/.env</code> to the repository (a <code>.gitignore</code> is provided).</li>
+        <li>Change <code>TOKEN_SECRET</code> before any deployment.</li>
+        <li>Passwords use <code>scrypt</code>; tokens are signed with HMAC-SHA256 and expire after 7 days.</li>
+      </ul>
+    </section>
+
+    <section id="roadmap">
+      <h2>16. Roadmap Ideas</h2>
+      <ul>
+        <li>Connect a real AI/LLM provider for itinerary, budget, and recommendation generation.</li>
+        <li>Replace demo hotel data with a booking/aggregator API.</li>
+        <li>Email delivery of the itinerary (the UI already shows an "Itinerary sent" state).</li>
+        <li>Live government travel advisories per destination.</li>
+        <li>Automated tests and a proper CI pipeline.</li>
+      </ul>
+    </section>
+
+    <footer>TripGuard AI — Complete Documentation &middot; Generated from project source</footer>
+
+  </div>
+</body>
+</html>
