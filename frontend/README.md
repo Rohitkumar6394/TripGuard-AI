@@ -1,17 +1,32 @@
-# React + Vite
+# TripGuard frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React app uses Vite, React Router and Tailwind CSS.
+Start the backend and MongoDB using the [native setup guide](../SETUP_MONGODB.md), or run the entire stack with the [Compose quick start](../README.md).
 
-Currently, two official plugins are available:
+## Native development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+From the repository root, run the following commands with Node.js 24 or 26 and npm.
 
-## React Compiler
+```sh
+cd frontend
+npm ci
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Open [TripGuard](http://localhost:5173).
+Set `VITE_API_URL` in `frontend/.env` if the API runs somewhere other than `http://localhost:4000`.
+The optional `VITE_GOOGLE_MAPS_EMBED_KEY` is a browser key restricted to the frontend origin and Maps Embed API.
+Keep the Places server key in the backend environment.
 
-## Expanding the ESLint configuration
+## Routes
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-n
+| Path | Purpose |
+| --- | --- |
+| `/`, `/signup`, `/login` | Home and account access |
+| `/dashboard` | Saved trips and destination weather |
+| `/plan` | Enter trip details, preview costs and save changes |
+| `/itinerary` | Reopen a trip, refresh listings or adjust the party and budget |
+| `/safety-chat` | General safety guidance with optional trip context |
+
+The dashboard, planner, itineraries and chat require sign-in.
+Run `npm run lint` and `npm run build` in this directory to check the frontend.

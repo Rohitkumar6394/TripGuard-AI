@@ -58,309 +58,78 @@ Change the budget or party size to preview the effect before saving.
 On an existing itinerary, choose **Adjust trip budget and party** to edit the same trip.
 Changing its route or dates starts a new trip.
 
-## Table of Contents
+### Worked example
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Features](#features)
-- [Backend API](#backend-api)
-- [Data Models](#data-models)
-- [Authentication](#authentication)
-- [Frontend Pages & Routing](#frontend-pages--routing)
-- [Environment Variables](#environment-variables)
-- [Setup & Running](#setup--running)
-- [Security Notes](#security-notes)
-- [Roadmap Ideas](#roadmap-ideas)
+Five travelers spending two nights share three rooms at the default occupancy of two.
+At ₹2,000 per room per night, lodging costs ₹12,000.
+Three days of meals at ₹500 and local travel at ₹250 per person per day bring essentials to ₹23,250 before fares.
+A ₹30,000 budget leaves room for three group activities at ₹400 per person, provided three distinct stops are available.
+The estimated total is ₹29,250.
+A ₹15,000 budget falls short of essentials by ₹8,250 and schedules zero stops.
 
----
+## Trip data and storage
 
-## Overview
+Open-Meteo resolves the destination and returns the available forecast for the trip dates.
+Google Places searches within 5 km for hotels, shopping and attractions, and within 25 km for resorts.
+Each category can return up to eight places.
+Listings can include addresses, ratings, review counts and Google Maps links.
+A preference containing “shop”, “market” or “retail” prioritizes stores when choosing stops.
+The planner spreads selected stops across the trip dates.
 
-TripGuard AI combines travel planning with safety analysis:
+MongoDB saves the owner, route, dates, budget, party, preferences, planning rates, available activity count, resolved destination, forecast snapshot and lookup time.
+Current place details and named stops come back in the create or refresh response.
+Reopening a trip uses the saved count for the budget summary until the next refresh.
+The safety chatbot provides general guidance and can look up current weather.
 
-- Users sign up / log in with email + password.
-- They submit a trip form (origin, destination, dates, budget, transport, travel type, people, preferences).
-- Open-Meteo resolves the city and provides its forecast.
-- Google Places Nearby Search looks for hotels, stores and attractions within 5 km of the city center and resorts within 25 km.
-- The itinerary groups returned sights and stores into suggested days.
-- Saved trips show the lookup time and can be refreshed from the Itinerary page, including trips created by the old demo generator.
-- The safety chatbot provides general guidance and can fetch current weather.
+## API reference
 
-Place coverage depends on the map and the provider's index.
-Room availability, rates, store inventory and travel safety scores have no connected source.
+The native API runs at `http://localhost:4000`.
+Authenticated requests use an `Authorization: Bearer <token>` header.
 
----
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/health` | Public | Check API and database status |
+| POST | `/api/auth/signup`, `/api/auth/login` | Public | Register or sign in |
+| GET | `/api/auth/me` | Signed in | Read the current account |
+| GET | `/api/weather?location=...` | Public | Current conditions and up to five forecast days |
+| POST | `/api/chat` | Signed in | Send a message with optional trip context |
+| POST | `/api/trips` | Signed in | Create a plan and return current results |
+| GET | `/api/trips`, `/api/trips/:id` | Owner | Read saved summaries |
+| PATCH | `/api/trips/:id` | Owner | Save budget, people, rates and planning preferences |
+| POST | `/api/trips/:id/refresh` | Owner | Fetch destination data again |
 
-## Tech Stack
+Create requests require origin, destination, ISO dates (`YYYY-MM-DD`) and a whole-rupee group budget.
+Include `people`, `travelType`, `transportMode`, `preferences` and `rates` to customize the plan.
+Send the group budget and party size when updating an existing trip.
+Solo trips have one traveler, couples have two, and families and groups have at least two.
 
-| Layer     | Technology                                    |
-|-----------|-----------------------------------------------|
-| Frontend  | React 19, React Router 7, Vite 8, Tailwind CSS 4, Framer Motion, lucide-react |
-| Backend   | Node.js (native `node:http` server, no framework), Mongoose 8 |
-| Database  | MongoDB (Atlas or local)                      |
-| Auth      | Custom HMAC-signed tokens (JWT-style), passwords hashed with `scrypt` |
-| Weather   | Open-Meteo (geocoding + forecast), server-side proxy |
+| Rate key | Default | Unit |
+| --- | ---: | --- |
+| `occupancy` | 2 | People per room |
+| `room` | 2,000 | INR per room per night |
+| `meals` | 500 | INR per person per day |
+| `local` | 250 | INR per person per day |
+| `activity` | 400 | INR per person per stop |
+| `roundTrip` | 0 | INR per person for the return journey including both directions |
 
----
+## Development
 
-## Architecture
+The [native setup guide](SETUP_MONGODB.md) covers MongoDB, environment files and startup without Docker.
+The [frontend guide](frontend/README.md) lists routes, scripts and browser settings.
 
+| Source | Responsibility |
+| --- | --- |
+| `backend/server.js` | HTTP routes, account authentication and MongoDB persistence |
+| `backend/live-trip.js` | Destination lookup, Google Places categories and weather |
+| `shared/planning.mjs` | Rates, room allocation, costs and itinerary selection used by both client and server |
+| `frontend/src/pages/PlanPage.jsx` | Trip form, budget preview and edits |
+| `frontend/src/components/TripBudget.jsx`, `TripListings.jsx` | Cost breakdown and destination results |
+
+Run these checks from the repository root after installing frontend dependencies.
+
+```sh
+node --test shared/planning.test.mjs
+npm --prefix frontend run lint
+npm --prefix frontend run build
+docker compose config -q
 ```
-React Frontend (Vite, port 5173)
-      │   fetch with Bearer token
-      ▼
-Node.js Backend (native HTTP, port 4000)
-      │   Mongoose
-      ▼
-MongoDB  (database: tripguard_ai)
-```
-
-Trip planning flow:
-
-```
-Sign in
-  →  Fill Trip Plan form
-  →  POST /api/trips
-  →  Backend validates input
-  →  Backend resolves destination and fetches mapped places and weather
-  →  Trip saved to MongoDB
-  →  Frontend renders the full plan
-```
-
----
-
-## Project Structure
-
-```
-TripGuard AI/
-├── SETUP_MONGODB.md        # MongoDB + environment setup guide
-├── README.md               # This file
-├── backend/
-│   ├── .env.example        # Backend environment template
-│   ├── server.js           # Entire API (models, auth, routes, logic)
-│   └── package.json
-└── frontend/
-    ├── .env.example        # VITE_API_URL template
-    ├── index.html
-    ├── vite.config.js
-    ├── eslint.config.js
-    ├── package.json
-    └── src/
-        ├── main.jsx            # React entry point
-        ├── App.jsx             # Router + protected routes
-        ├── index.css           # Global styles + theme variables
-        ├── lib/
-        │   └── api.js          # fetch wrapper with auth token
-        ├── components/
-        │   ├── Navbar.jsx      # Navigation + theme switcher + logout
-        │   └── Footer.jsx
-        ├── pages/
-        │   ├── HomePage.jsx            # Landing page
-        │   ├── AuthPage.jsx            # Login / Signup (shared)
-        │   ├── SignupPage.jsx          # Renders AuthPage in signup mode
-        │   ├── DashboardPage.jsx       # Trips, weather, safety links
-        │   ├── PlanPage.jsx            # Trip form + full result display
-        │   └── SafetyChatbotPage.jsx   # Context-aware safety chat
-        ├── state/theme/                # Light / Dark / System theme
-        │   ├── ThemeContext.js
-        │   ├── ThemeProvider.jsx
-        │   └── useTheme.js
-        └── ui/
-            └── AppShell.jsx            # Navbar + content + Footer layout
-```
-
----
-
-## Features
-
-| Feature | Description |
-|--------|-------------|
-| **Destination listings** | Named resorts, hotels, stores and attractions with individual map links. |
-| **Itinerary** | Suggested stops drawn from the destination lookup. |
-| **Weather** | Available daily forecasts that overlap the trip dates. |
-| **Safety Chatbot** | General travel guidance and current weather. |
-| **Dashboard** | Saved trips, stat cards, quick weather check, and quick links. |
-
----
-
-## Backend API
-
-Base URL: `http://localhost:4000`
-
-| Method | Endpoint            | Auth | Description |
-|--------|---------------------|------|-------------|
-| POST   | `/api/auth/signup`  | No   | Create an account. Body: `{ name, email, password }` |
-| POST   | `/api/auth/login`   | No   | Log in. Body: `{ email, password }` |
-| GET    | `/api/auth/me`      | Yes  | Current authenticated user. |
-| GET    | `/api/health`       | No   | Health check: `{ ok, database }`. |
-| GET    | `/api/weather?location=...` | No | Live weather + 5-day forecast (Open-Meteo). |
-| POST   | `/api/chat`         | Yes  | Safety question. Body: `{ message, tripId? }`. |
-| POST   | `/api/trips`        | Yes  | Create a trip plan. Body: `{ origin, destination, startDate, endDate, budget, transportMode, travelType, people, preferences, fullName?, email? }`. |
-| GET    | `/api/trips`        | Yes  | List user's trips (newest first). |
-| GET    | `/api/trips/:id`    | Yes  | Get one of the user's trips. |
-| POST | `/api/trips/:id/refresh` | Yes | Refresh a saved trip from the providers. |
-
-Validation rules:
-- Origin, destination, start date, and end date are required.
-- End date must be on or after the start date.
-- Passwords must be at least 6 characters.
-
----
-
-## Data Models
-
-### users
-| Field    | Type   | Notes |
-|----------|--------|-------|
-| `name`   | string | required |
-| `email`  | string | required, unique, lowercased |
-| `password` | string | required, scrypt hash `salt:hash` |
-
-Auto-fields: `createdAt`, `updatedAt`.
-
-### trips
-| Field | Type | Notes |
-|-------|------|-------|
-| `userId` | ObjectId | ref `User`, indexed |
-| `fullName`, `email` | string | snapshot for the plan |
-| `origin`, `destination` | string | required |
-| `startDate`, `endDate` | Date | required |
-| `budget` | number | default `0` |
-| `transportMode` | string | default `"Flight"` |
-| `travelType` | string | default `"Solo"` |
-| `people` | number | default `1` |
-| `preferences` | string | default `""` |
-| `itineraryId` | string | required, unique |
-| `weatherInsights` | string | |
-| `checkedAt` | Date | lookup timestamp |
-| `resolvedLocation` | string | matched city, region and country |
-
-Auto-fields: `createdAt`, `updatedAt`.
-
-Collections are created automatically by Mongoose.
-
----
-
-## Authentication
-
-- Passwords are hashed with Node's `scrypt` (per-user random salt), compared with `timingSafeEqual`.
-- A custom token is created: base64url JSON payload `{ sub, exp }` + HMAC-SHA256 signature using `TOKEN_SECRET`. Expiry: 7 days.
-- Frontend sends the token as `Authorization: Bearer <token>`.
-- The frontend stores auth state in `localStorage`:
-  - `tripguard-auth-token` — the bearer token
-  - `tripguard-authenticated` — `"true"` flag
-  - `tripguard-user` — JSON user object
-
-Protected routes in the frontend redirect unauthenticated users to `/login`.
-
----
-
-## Frontend Pages & Routing
-
-| Route | Page | Access |
-|-------|------|--------|
-| `/` | HomePage — landing with hero, features, safety & how-it-works sections | Public |
-| `/login` | AuthPage — sign in | Public |
-| `/signup` | SignupPage → AuthPage (signup mode) | Public |
-| `/dashboard` | DashboardPage — stats, recent trips, weather, safety link | Protected |
-| `/plan` | PlanPage — trip form + generated plan | Protected |
-| `/safety-chat` | SafetyChatbotPage — assistant chat | Protected |
-| `*` | Redirect to `/` | — |
-
-### Theme
-
-`ThemeProvider` supports **Light**, **Dark** (default), and **System** modes via `localStorage` key `tripguard-theme` and `data-theme` on `<html>`.
-
-### API helper (`src/lib/api.js`)
-
-`apiFetch(path, options)` prepends `VITE_API_URL` (default `http://localhost:4000`), attaches the auth token, and parses JSON errors.
-
----
-
-## Environment Variables
-
-### Backend — `backend/.env` (copy from `.env.example`)
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `PORT` | `4000` | API port |
-| `CLIENT_ORIGIN` | `http://localhost:5173` | CORS allowed origin |
-| `MONGODB_URI` | `mongodb://127.0.0.1:27017/tripguard_ai` | MongoDB connection string |
-| `TOKEN_SECRET` | Random per process | HMAC signing secret — change before deploying |
-| `GOOGLE_PLACES_API_KEY` | empty | Server key restricted to Places API (New). |
-
-### Frontend — `frontend/.env` (copy from `.env.example`, optional)
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `VITE_API_URL` | `http://localhost:4000` | Backend base URL |
-
----
-
-## Setup & Running
-
-See also [`SETUP_MONGODB.md`](SETUP_MONGODB.md) for details.
-
-### Prerequisites
-- Node.js 24 or 26 with npm
-- MongoDB (Atlas cluster or local server)
-
-### 1. Backend
-
-```bash
-cd "backend"
-npm ci
-# copy .env.example to .env and set MONGODB_URI + TOKEN_SECRET
-npm run dev
-```
-
-Expected output:
-```
-MongoDB connected: tripguard_ai
-TripGuard API running at http://localhost:4000
-```
-
-Health check: open `http://localhost:4000/api/health` → `{"ok":true,"database":"connected"}`
-
-### 2. Frontend
-
-```bash
-cd "frontend"
-npm ci
-npm run dev
-```
-
-Frontend runs at `http://localhost:5173`.
-
-### Scripts
-
-Backend:
-- `npm run dev` — watch mode (`node --watch server.js`)
-- `npm start` — plain start
-
-Frontend:
-- `npm run dev` — Vite dev server
-- `npm run build` — production build
-- `npm run preview` — preview built output
-- `npm run lint` — ESLint
-
----
-
-## Security Notes
-
-- Never put `MONGODB_URI` or `TOKEN_SECRET` in the React frontend.
-- Never commit `backend/.env` to the repository (a `.gitignore` is provided).
-- Change `TOKEN_SECRET` before any deployment.
-- Passwords use `scrypt`; tokens are signed with HMAC-SHA256 and expire after 7 days.
-
----
-
-## Roadmap Ideas
-
-- Connect a real AI/LLM provider for itinerary, budget, and recommendation generation.
-- Connect a booking provider for date-specific room rates and availability.
-- Email delivery of the itinerary (the UI already shows an "Itinerary sent" state).
-- Live government travel advisories per destination.
-- Automated tests and a proper CI pipeline.
