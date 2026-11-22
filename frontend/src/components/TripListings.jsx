@@ -1,3 +1,4 @@
+import { planTrip } from '../../../shared/planning.mjs'
 import { useState } from 'react'
 import { BedDouble, Building2, Camera, CloudSun, ExternalLink, MapPin, Navigation, ShoppingBag, Star } from 'lucide-react'
 
@@ -13,6 +14,8 @@ function mapsSearch(query) {
 }
 
 export default function TripListings({ trip }) {
+  let schedule = []
+  try { schedule = planTrip(trip, trip.places).schedule } catch { /* Partial edits have no itinerary. */ }
   const [category, setCategory] = useState('hotels')
   const [selected, selectPlace] = useState(null)
   const destination = trip.resolvedLocation || trip.destination
@@ -67,9 +70,9 @@ export default function TripListings({ trip }) {
         <h3 className="mb-3 flex items-center gap-2 font-bold"><CloudSun size={18}/> Trip forecast <small className="font-normal text-[color:var(--text-muted)]">Open-Meteo</small></h3>
         <ul className="flex flex-wrap gap-2">{trip.weatherInsights.split('\n').map(line => <li className="rounded-xl bg-[color:var(--glass)] px-3 py-2 text-sm" key={line}>{line}</li>)}</ul>
       </section>}
-      {trip.optimizedItinerary?.length > 0 && <section className="mt-6"><h3 className="mb-3 font-bold">Suggested stops by day</h3>
-        <div className="grid gap-3 sm:grid-cols-2">{trip.optimizedItinerary.map(day => {
-          const [heading, ...stops] = day.split('\n')
+      {schedule.length > 0 && <section className="mt-6"><h3 className="mb-3 font-bold">Suggested stops by day</h3>
+        <div className="grid gap-3 sm:grid-cols-2">{schedule.map(({day, names: stops}) => {
+          const heading = 'Day ' + day
           return <div key={heading} className="rounded-xl border-l-2 border-orange-400 bg-[color:var(--glass)] p-4"><b>{heading}</b><ul className="mt-2 list-inside list-disc space-y-1 text-sm">{stops.map((s,i) => <li key={i}>{s}</li>)}</ul></div>
         })}</div></section>}
     </div>

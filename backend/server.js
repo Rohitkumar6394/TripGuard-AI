@@ -1,3 +1,4 @@
+import { planningInputs, planTrip } from '../shared/planning.mjs'
 import 'dotenv/config'
 import { liveTrip, resolveDestination, weatherAt, LookupError } from './live-trip.js'
 import { createServer } from 'node:http'
@@ -29,6 +30,8 @@ const Trip = mongoose.model(
       destination: { type: String, required: true },
       startDate: { type: Date, required: true },
       endDate: { type: Date, required: true },
+      activityCount: Number,
+      rates: mongoose.Schema.Types.Mixed,
       budget: { type: Number, default: 0 },
       transportMode: { type: String, default: 'Flight' },
       travelType: { type: String, default: 'Solo' },
@@ -53,6 +56,16 @@ const Trip = mongoose.model(
 )
 
 const demoFields = ['hotels', 'transportDetails', 'costPredictor', 'safetyScore', 'safetyAlerts', 'emergencyInfo', 'aiRecommendations']
+
+function checkedPlanning(input) {
+  try {
+    const values = planningInputs(input)
+    planTrip({ ...input, ...values })
+    return values
+  } catch (error) {
+    throw new LookupError(400, error.message)
+  }
+}
 
 function tripForDisplay(trip) {
   if (trip.checkedAt) {
@@ -108,7 +121,7 @@ function sendJson(response, status, body) {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': clientOrigin,
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
   })
   response.end(JSON.stringify(body))
 }
@@ -266,6 +279,8 @@ const server = createServer(async (request, response) => {
       if (![body.startDate, body.endDate].every(date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().startsWith(date))) {
         return sendJson(response, 400, { message: 'Enter valid trip dates.' })
       }
+      const travelType = body.travelType || (Number(body.people) > 1 ? 'Group/Friends' : 'Solo')
+      const inputs = checkedPlanning({ ...body, travelType })
       const { places, placesStatus, optimizedItinerary, ...plan } = await liveTrip(body)
 
       const trip = await Trip.create({
@@ -274,10 +289,9 @@ const server = createServer(async (request, response) => {
         destination: String(body.destination).trim(),
         startDate: new Date(body.startDate),
         endDate: new Date(body.endDate),
-        budget: Number(body.budget) || 0,
         transportMode: String(body.transportMode || 'Flight'),
-        travelType: String(body.travelType || 'Solo'),
-        people: Math.max(1, Number(body.people) || 1),
+        travelType,
+        ...inputs,
         preferences: String(body.preferences || '').trim(),
         ...plan,
       })
@@ -306,6 +320,19 @@ const server = createServer(async (request, response) => {
     }
 
     const tripMatch = url.pathname.match(/^\/api\/trips\/([^/]+)$/)
+    if (request.method === 'PATCH' && tripMatch) {
+      const user = await requireUser(request, response)
+      if (!user) return
+      const filter = { _id: tripMatch[1], userId: user._id }
+      const saved = await Trip.findOne(filter).lean()
+      if (!saved) return sendJson(response, 404, { message: 'Trip not found.' })
+      const body = await readBody(request)
+      const inputs = checkedPlanning({ ...saved, travelType: body.travelType || saved.travelType, budget: body.budget, people: body.people, rates: body.rates ?? saved.rates })
+      const update = { ...inputs, travelType: String(body.travelType || saved.travelType), preferences: String(body.preferences ?? saved.preferences), transportMode: String(body.transportMode || saved.transportMode) }
+      const trip = await Trip.findOneAndUpdate(filter, { $set: update }, { new: true }).lean()
+      return sendJson(response, 200, { trip: tripForDisplay(trip) })
+    }
+
     if (request.method === 'GET' && tripMatch) {
       const user = await requireUser(request, response)
       if (!user) return

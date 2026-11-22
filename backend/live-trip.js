@@ -1,3 +1,4 @@
+import { planTrip } from '../shared/planning.mjs'
 import { randomUUID } from 'node:crypto'
 
 export class LookupError extends Error {
@@ -90,15 +91,11 @@ export async function liveTrip(input) {
     const high = weather.daily.temperature_2m_max?.[i]
     return Number.isFinite(low) && Number.isFinite(high) ? [date + ' · ' + low + ' to ' + high + ' °C'] : []
   })
-  const days = Math.round((Date.parse(input.endDate) - Date.parse(input.startDate)) / 86400000) + 1
-  const stops = [...new Map([...(listings.places.attractions || []), ...(listings.places.stores || [])].map(p => [p.id, p])).values()]
-  const dayCount = Math.min(days, stops.length)
-  const itinerary = Array.from({length: dayCount}, (_, i) => 'Day ' + (i + 1))
-  stops.forEach((stop, i) => { itinerary[i % dayCount] += '\n' + stop.name })
+  const plan = planTrip(input, listings.places)
   return {
-    itineraryId: randomUUID(), checkedAt: new Date(), ...listings,
+    itineraryId: randomUUID(), checkedAt: new Date(), activityCount: plan.activityCount, ...listings,
     resolvedLocation: [place.name, place.admin1, place.country].filter(Boolean).join(', '),
     weatherInsights: forecast.join('\n') || (weather ? 'No forecast covers these trip dates yet.' : 'Weather lookup unavailable.'),
-    optimizedItinerary: itinerary,
+    optimizedItinerary: plan.schedule.map(({ day, names }) => ['Day ' + day, ...names].join('\n')),
   }
 }

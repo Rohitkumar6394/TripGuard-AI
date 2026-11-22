@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import TripListings from '../components/TripListings.jsx'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { apiFetch } from '../lib/api.js'
 
 
+import TripBudget from '../components/TripBudget.jsx'
+import { defaultRates } from '../../../shared/planning.mjs'
+
+const rateLabels = {
+  occupancy: 'People per room', room: 'Room per night (₹)', meals: 'Meals per person per day (₹)',
+  local: 'Local travel per person per day (₹)', activity: 'Allowance per person per activity (₹)',
+  roundTrip: 'Round-trip fare per person (₹)',
+}
+
 export default function PlanPage() {
   const navigate = useNavigate()
+  const saved = useLocation().state?.trip
 
   const [form, setForm] = useState(() => ({
     origin: '',
@@ -16,19 +26,24 @@ export default function PlanPage() {
     transportMode: 'Flight',
     travelType: 'Solo',
     people: 1,
-    preferences: ''
+    preferences: '',
+    ...(saved && { ...saved, startDate: saved.startDate.slice(0, 10), endDate: saved.endDate.slice(0, 10) }),
+    rates: { ...defaultRates, ...saved?.rates }
   }))
 
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState(null)
-  const [result, setResult] = useState(null)
+  const [result, setResult] = useState(saved || null)
+  const sameTrip = result && ['origin', 'destination'].every(k => form[k].trim() === result[k]) &&
+    ['startDate', 'endDate'].every(k => form[k] === result[k].slice(0, 10))
+  const planningFields = { budget: form.budget, people: form.people, rates: form.rates,
+    travelType: form.travelType, preferences: form.preferences, transportMode: form.transportMode }
 
   const peopleEditable = form.travelType === 'Family' || form.travelType === 'Group/Friends'
 
   async function onSubmit(e) {
     e.preventDefault()
     setError(null)
-    setResult(null)
 
     if (!form.origin.trim() || !form.destination.trim()) {
       setError('Please enter origin and destination.')
@@ -46,12 +61,18 @@ export default function PlanPage() {
     setGenerating(true)
 
     try {
-      const response = await apiFetch('/api/trips', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      })
-
-      setResult(response.trip)
+      if (sameTrip) {
+        const response = await apiFetch('/api/trips/' + result._id, { method: 'PATCH', body: JSON.stringify(planningFields) })
+        setResult({ ...result, ...response.trip })
+        if (!result.placesStatus) {
+          const refreshed = await apiFetch('/api/trips/' + result._id + '/refresh', { method: 'POST' })
+          setResult(refreshed.trip)
+        }
+      } else {
+        const { origin, destination, startDate, endDate } = form
+        const response = await apiFetch('/api/trips', { method: 'POST', body: JSON.stringify({ origin, destination, startDate, endDate, ...planningFields }) })
+        setResult(response.trip)
+      }
     } catch (error) {
       if (error.status === 401) {
         localStorage.removeItem('tripguard-auth-token')
@@ -66,7 +87,7 @@ export default function PlanPage() {
     }
   }
 
-  const isFormValid = form.origin && form.destination && form.startDate && form.endDate && form.budget && form.transportMode && form.travelType && form.people
+  const isFormValid = form.origin && form.destination && form.startDate && form.endDate && form.budget !== '' && form.transportMode && form.travelType && form.people
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-20">
@@ -142,7 +163,7 @@ export default function PlanPage() {
           </label>
 
           <label className="text-sm text-[color:var(--text-soft)]">
-            Budget (₹ )
+            Total group budget (₹)
             <input
               className="mt-1 w-full rounded-xl bg-[color:var(--glass)] px-3 py-2 outline-none ring-1 ring-[color:var(--glass-border)]"
               type="number"
@@ -202,7 +223,7 @@ export default function PlanPage() {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, travelType: option.value, people: option.value === 'Couple' ? 2 : option.value === 'Solo' ? 1 : f.people }))}
+                    onClick={() => setForm((f) => ({ ...f, travelType: option.value, people: option.value === 'Couple' ? 2 : option.value === 'Solo' ? 1 : Math.max(2, Number(f.people) || 2) }))}
                     className={
                       'group rounded-3xl border p-4 text-left transition-all ' +
                       (active
@@ -234,7 +255,8 @@ export default function PlanPage() {
               disabled={!peopleEditable}
               onChange={(e) => setForm((f) => ({ ...f, people: e.target.value }))}
               required
-              min={1}
+              min={peopleEditable ? 2 : 1}
+              max={1000}
             />
             {!peopleEditable ? <div className="mt-1 text-xs text-[color:var(--text-muted)]">Auto-set based on travel type.</div> : null}
           </label>
@@ -249,6 +271,21 @@ export default function PlanPage() {
             />
           </label>
 
+          <div className="md:col-span-2 space-y-4">
+            <details className="rounded-2xl border border-[color:var(--glass-border)] p-4">
+              <summary className="cursor-pointer font-semibold">Planning rates and room sharing</summary>
+              <p className="mt-2 text-sm text-[color:var(--text-muted)]">These starting estimates apply to the whole trip. Enter destination prices or booking quotes in rupees. Set prepaid items to zero when budgeting for remaining expenses.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {Object.entries(rateLabels).map(([key, label]) => <label key={key} className="text-sm">{label}
+                  <input type="number" required min={key === 'occupancy' ? 1 : 0} max={key === 'occupancy' ? 20 : 10000000}
+                    className="mt-1 w-full rounded-xl border border-[color:var(--glass-border)] bg-[color:var(--glass)] p-2"
+                    value={form.rates[key]} onChange={e => setForm(f => ({ ...f, rates: { ...f.rates, [key]: e.target.value } }))}/>
+                </label>)}
+              </div>
+            </details>
+            {form.startDate && form.endDate && form.budget !== '' && <TripBudget trip={{ ...form, activityCount: sameTrip ? result.activityCount : 0 }} places={sameTrip ? result.places : undefined}/>}
+          </div>
+
           {error ? (
             <div className="md:col-span-2 rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-200">
               {error}
@@ -262,14 +299,14 @@ export default function PlanPage() {
               type="submit"
               title={!isFormValid ? "Please fill all required details" : ""}
             >
-              {generating ? 'Generating Plan...' : 'Generate Plan'}
+              {generating ? 'Saving plan…' : sameTrip ? 'Save plan changes' : 'Generate Plan'}
             </button>
           </div>
         </form>
       </div>
 
-      {result && <div className="mt-6 space-y-5">
-        <TripListings trip={result} />
+      {sameTrip && <div className="mt-6 space-y-5">
+        <TripListings trip={{ ...result, ...planningFields }} />
       </div>}
     </main>
   )

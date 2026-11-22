@@ -39,6 +39,25 @@ Google Maps search links work without either key.
 TripGuard stores trip inputs and the weather snapshot.
 Use **Refresh destination listings** on a saved trip to retrieve current Google place details and suggested stops.
 
+### How the group budget works
+
+The budget covers the whole party in INR.
+TripGuard counts both travel dates for meals and local transport, and only the nights between them for rooms.
+It rounds the room count up using the chosen occupancy.
+A same-day trip needs no lodging.
+
+Open **Planning rates and room sharing** to replace the starting allowances with your quotes.
+Round-trip fares start at zero and apply once per traveler when entered.
+Each scheduled stop uses one activity allowance per traveler.
+The planner reserves essential costs first, then chooses distinct live destinations within the remaining allowance.
+Small parties can schedule up to three stops per day, families and parties of four to seven up to two, and parties of eight or more one.
+Available listings can reduce that count further.
+Room capacity, ticket availability and venue prices require confirmation with the provider.
+
+Change the budget or party size to preview the effect before saving.
+On an existing itinerary, choose **Adjust trip budget and party** to edit the same trip.
+Changing its route or dates starts a new trip.
+
 ## Table of Contents
 
 - [Overview](#overview)

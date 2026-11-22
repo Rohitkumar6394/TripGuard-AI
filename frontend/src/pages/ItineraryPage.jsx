@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CalendarDays, MapPin, Route, Sparkles } from 'lucide-react'
+import TripBudget from '../components/TripBudget.jsx'
 import TripListings from '../components/TripListings.jsx'
 import { apiFetch } from '../lib/api.js'
 
@@ -137,6 +138,8 @@ export default function ItineraryPage() {
                     ) : null}
 
                     <button type="button" disabled={refreshing} onClick={refresh} className="mb-4 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">{refreshing ? 'Checking…' : 'Refresh destination listings'}</button>
+                    <Link to="/plan" state={{ trip }} className="ml-3 text-sm font-semibold underline">Adjust trip budget and party</Link>
+                    <div className="mb-4"><TripBudget trip={trip} places={trip.places}/></div>
                     <TripListings key={trip._id} trip={trip} />
                   </div>
                 </>
