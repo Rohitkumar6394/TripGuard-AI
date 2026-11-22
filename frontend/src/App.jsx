@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import HomePage from './pages/HomePage.jsx'
 import PlanPage from './pages/PlanPage.jsx'
+import ItineraryPage from './pages/ItineraryPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import AuthPage from './pages/AuthPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
+            <Route path="/itinerary" element={<ProtectedRoute><ItineraryPage /></ProtectedRoute>} />
             <Route path="/safety-chat" element={<ProtectedRoute><SafetyChatbotPage /></ProtectedRoute>} />
             <Route path="/login" element={<AuthPage />} />
             <Route path="/signup" element={<SignupPage />} />

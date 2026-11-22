@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "dotenv": "^18.0.10",
     "framer-motion": "^13.2.0",
     "lucide-react": "^1.40.0",
+    "openai": "^7.57.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",

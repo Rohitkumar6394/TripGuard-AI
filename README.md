@@ -240,6 +240,8 @@ Protected routes in the frontend redirect unauthenticated users to `/login`.
 | `CLIENT_ORIGIN` | `http://localhost:5173` | CORS allowed origin |
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/tripguard_ai` | MongoDB connection string |
 | `TOKEN_SECRET` | `change-this-in-production` | HMAC signing secret — change before deploying |
+| `OPENAI_API_KEY` | — | Optional; enables AI-generated itineraries. Basic plans are used when unavailable. |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Optional model used for AI-generated itineraries |
 
 ### Frontend — `frontend/.env` (copy from `.env.example`, optional)
 

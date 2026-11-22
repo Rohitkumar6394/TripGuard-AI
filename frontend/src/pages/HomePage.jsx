@@ -21,7 +21,7 @@ export default function HomePage() {
       <section id="home" className="relative overflow-hidden">
         <div className="absolute inset-0">
           <img src={homeImg} alt="Travel destination" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-slate-950/70" />
+          <div className="absolute inset-0 bg-slate-450/70" />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-emerald-950/40" />
         </div>
         <div className="relative mx-auto grid min-h-[88vh] max-w-7xl items-center gap-10 px-4 py-24 lg:grid-cols-2">
@@ -45,17 +45,17 @@ export default function HomePage() {
               {['AI Planning','Risk Analysis','Budget Control'].map((x,i)=><div key={x} className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur"><div className="text-lg font-bold text-white">{i===0?'🤖':i===1?'🛡️':'💰'}</div><div className="mt-1 text-xs text-slate-300">{x}</div></div>)}
             </div>
           </motion.div>
-          <motion.div initial={{opacity:0,scale:.96}} animate={{opacity:1,scale:1}} transition={{duration:.7,delay:.15}} className="hidden lg:block">
-            <div className="rounded-[2rem] border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
-              <div className="rounded-3xl bg-slate-950/70 p-6">
-                <div className="flex items-center justify-between"><div><p className="text-xs text-slate-400">TRIPGUARD AI</p><h2 className="mt-1 text-2xl font-bold text-white">Your safe trip, organized.</h2></div><ShieldCheck className="text-emerald-300"/></div>
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  {['AI Itinerary','₹ Budget','Weather','Safety 92/100'].map(x=><div key={x} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm font-semibold text-slate-200">{x}</div>)}
-                </div>
-                <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100">✓ Trip checked — ready to explore safely.</div>
-              </div>
-            </div>
-          </motion.div>
+          {/* <motion.div initial={{opacity:0,scale:.96}} animate={{opacity:1,scale:1}} transition={{duration:.7,delay:.15}} className="hidden lg:block"> */}
+            {/* <div className="rounded-[2rem] border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-xl"> */}
+              {/* <div className="rounded-3xl bg-slate-950/70 p-6">
+                {/* <div className="flex items-center justify-between"><div><p className="text-xs text-slate-400">TRIPGUARD AI</p><h2 className="mt-1 text-2xl font-bold text-white">Your safe trip, organized.</h2></div><ShieldCheck className="text-emerald-300"/></div> */}
+                {/* <div className="mt-6 grid grid-cols-2 gap-3"> */}
+                  {/* {['AI Itinerary','₹ Budget','Weather','Safety 92/100'].map(x=><div key={x} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm font-semibold text-slate-200">{x}</div>)} */}
+                {/* </div> */}
+                {/* <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100">✓ Trip checked — ready to explore safely.</div> */}
+              {/* </div> */}
+            {/* </div> */}
+          {/* </motion.div> */}
         </div>
       </section>
 

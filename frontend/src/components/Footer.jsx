@@ -10,7 +10,7 @@ const quickLinks = [
 
 const features = [
   { label: 'AI Trip Planner', to: '/plan' },
-  { label: 'Budget Planner', to: '/plan' },
+  { label: 'AI Itinerary', to: '/itinerary' },
   { label: 'Safety Analysis', to: '/safety-chat' },
   { label: 'Weather', to: '/dashboard' },
 ]

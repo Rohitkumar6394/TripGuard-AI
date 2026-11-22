@@ -95,7 +95,7 @@ export default function Navbar() {
         {mobileMenuOpen && (
           <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}} className="border-t border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] md:hidden">
             <nav className="mx-auto flex max-w-7xl flex-col px-4 py-3">
-              {(authenticated ? [{label:'Dashboard',href:'/dashboard'},{label:'AI Trip Planning',href:'/plan'},{label:'Safety Chatbot',href:'/safety-chat'}] : navItems).map(item => (
+              {(authenticated ? [{label:'Dashboard',href:'/dashboard'},{label:'AI Trip Planning',href:'/plan'},{label:'AI Itinerary',href:'/itinerary'},{label:'Safety Chatbot',href:'/safety-chat'}] : navItems).map(item => (
                 <Link key={item.label} to={item.href} onClick={()=>setMobileMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm hover:bg-[color:var(--glass-hover)]">{item.label}</Link>
               ))}
               {authenticated ? <button onClick={logout} className="mt-2 rounded-xl bg-[color:var(--glass)] px-4 py-3 text-left text-sm">Logout</button> : <Link to="/login" onClick={()=>setMobileMenuOpen(false)} className="mt-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-4 py-3 text-sm font-semibold text-white">Sign in</Link>}

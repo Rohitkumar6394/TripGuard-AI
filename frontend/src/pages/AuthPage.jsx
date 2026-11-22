@@ -13,10 +13,14 @@ export default function AuthPage() {
 
 function AuthForm({ isSignup }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [error, setError] = useState('')
+  const [duplicateEmail, setDuplicateEmail] = useState(false)
   const [loading, setLoading] = useState(false)
   const [nameValue, setNameValue] = useState('')
-  const [emailValue, setEmailValue] = useState('')
+  const [emailValue, setEmailValue] = useState(() =>
+    typeof location.state?.email === 'string' ? location.state.email : ''
+  )
   const [passwordValue, setPasswordValue] = useState('')
   const [confirmPasswordValue, setConfirmPasswordValue] = useState('')
 
@@ -49,6 +53,7 @@ function AuthForm({ isSignup }) {
     }
 
     setError('')
+    setDuplicateEmail(false)
     setLoading(true)
 
     try {
@@ -71,6 +76,7 @@ function AuthForm({ isSignup }) {
       localStorage.setItem('tripguard-user', JSON.stringify(result.user))
       navigate('/dashboard')
     } catch (requestError) {
+      setDuplicateEmail(isSignup && requestError.status === 409)
       setError(
         requestError instanceof TypeError
           ? 'Backend is unavailable. Start the API with npm run dev in backend.'
@@ -159,7 +165,20 @@ function AuthForm({ isSignup }) {
             </label>
           ) : null}
 
-          {error ? <p className="text-sm text-red-300">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-red-300">
+              {error}{' '}
+              {duplicateEmail ? (
+                <Link
+                  to="/login"
+                  state={{ email: emailValue }}
+                  className="font-semibold text-orange-300 hover:underline"
+                >
+                  Sign in instead
+                </Link>
+              ) : null}
+            </p>
+          ) : null}
 
           <button
             type="submit"

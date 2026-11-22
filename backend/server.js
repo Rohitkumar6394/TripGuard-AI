@@ -1,6 +1,13 @@
+import 'dotenv/config'
+import OpenAI from 'openai'
 import { createServer } from 'node:http'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHmac } from 'node:crypto'
 import mongoose from 'mongoose'
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null
+
+const AI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
 
 const port = Number(process.env.PORT || 4000)
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/tripguard_ai'
@@ -24,8 +31,6 @@ const Trip = mongoose.model(
   new mongoose.Schema(
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-      fullName: String,
-      email: String,
       origin: { type: String, required: true },
       destination: { type: String, required: true },
       startDate: { type: Date, required: true },
@@ -187,6 +192,152 @@ ${preferences ? `Focus your activities around: ${preferences}.` : 'Balance sight
   }
 }
 
+async function generateAIItinerary(input) {
+  if (!openai) {
+    throw new Error('OPENAI_API_KEY is missing in backend .env')
+  }
+
+  const startDate = new Date(input.startDate)
+  const endDate = new Date(input.endDate)
+
+  const days = Math.floor(
+  (endDate - startDate) / 86400000
+  ) + 1
+
+  if (!Number.isInteger(days) || days < 1 || days > 14) {
+    throw new Error('Trip duration must be between 1 and 14 days.')
+  }
+
+  const tripDetails = {
+    origin: String(input.origin || '').trim(),
+    destination: String(input.destination || '').trim(),
+    startDate: input.startDate,
+    endDate: input.endDate,
+    days,
+    budget: Number(input.budget) || 0,
+    currency: 'INR',
+    transportMode: String(input.transportMode || 'Flight'),
+    travelType: String(input.travelType || 'Solo'),
+    people: Math.max(1, Number(input.people) || 1),
+    preferences: String(input.preferences || '').slice(0, 1000),
+  }
+
+  const schema = {
+    type: 'object',
+    properties: {
+      summary: { type: 'string' },
+      recommendations: { type: 'string' },
+      days: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            day: { type: 'integer' },
+            date: { type: 'string' },
+            title: { type: 'string' },
+            activities: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  time: { type: 'string' },
+                  activity: { type: 'string' },
+                  description: { type: 'string' },
+                  estimatedCostINR: { type: 'number' }
+                },
+                required: [
+                  'time',
+                  'activity',
+                  'description',
+                  'estimatedCostINR'
+                ],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ['day', 'date', 'title', 'activities'],
+          additionalProperties: false
+        }
+      }
+    },
+    required: ['summary', 'recommendations', 'days'],
+    additionalProperties: false
+  }
+
+  const response = await openai.chat.completions.create({
+    model: AI_MODEL,
+    messages: [
+      {
+        role: 'system',
+        content: `
+You are TripGuard AI, a professional travel itinerary planner.
+
+Create realistic, useful, destination-specific travel itineraries.
+
+Rules:
+- Generate exactly the requested number of days.
+- Use the supplied dates.
+- Consider the user's budget, group size and interests.
+- Organize each day into morning, afternoon and evening activities.
+- Include realistic estimated costs in INR.
+- Avoid inventing exact opening hours, ticket prices or live availability.
+- Do not claim hotels, tickets or transport are booked.
+- Include practical travel and rest time.
+- If information is uncertain, clearly say it should be verified.
+- Return only data matching the supplied JSON schema.
+        `
+      },
+      {
+        role: 'user',
+        content: JSON.stringify(tripDetails)
+      }
+    ],
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'trip_itinerary',
+        strict: true,
+        schema
+      }
+    }
+  })
+
+  const message = response.choices[0]?.message
+
+  if (message?.refusal) {
+    throw new Error('AI could not generate this itinerary.')
+  }
+
+  if (!message?.content) {
+    throw new Error('AI returned an empty itinerary.')
+  }
+
+  const result = JSON.parse(message.content)
+
+  if (!Array.isArray(result.days) || result.days.length !== days) {
+    throw new Error('AI returned an incomplete itinerary.')
+  }
+
+  // Keep the existing MongoDB field format compatible
+  // with PlanPage.jsx and ItineraryPage.jsx.
+  const optimizedItinerary = result.days.map((day) => {
+    const activities = day.activities.map((item) =>
+      `• ${item.time}: ${item.activity} - ${item.description} (Estimated: ₹${item.estimatedCostINR})`
+    )
+
+    return [
+      `Day ${day.day} - ${day.date}: ${day.title}`,
+      ...activities
+    ].join('\n')
+  })
+
+  return {
+    optimizedItinerary,
+    aiRecommendations: result.recommendations
+  }
+}
+
+
 async function getWeather(location) {
   const query = String(location || '').trim()
   if (!query) throw new Error('Location is required.')
@@ -340,10 +491,18 @@ const server = createServer(async (request, response) => {
       }
 
       const plan = buildTripPlan(body)
+
+      try {
+        const aiPlan = await generateAIItinerary(body)
+        plan.optimizedItinerary = aiPlan.optimizedItinerary
+        plan.aiRecommendations = aiPlan.aiRecommendations
+      } catch (error) {
+        console.error('AI itinerary generation failed; using the basic plan:', error)
+        plan.aiRecommendations = `AI itinerary generation was unavailable, so a basic plan is shown.\n${plan.aiRecommendations}`
+      }
+
       const trip = await Trip.create({
         userId: user._id,
-        fullName: String(body.fullName || user.name),
-        email: String(body.email || user.email).toLowerCase(),
         origin: String(body.origin).trim(),
         destination: String(body.destination).trim(),
         startDate: new Date(body.startDate),

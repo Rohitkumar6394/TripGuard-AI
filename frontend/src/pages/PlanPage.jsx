@@ -124,8 +124,6 @@ export default function PlanPage() {
   const navigate = useNavigate()
 
   const [form, setForm] = useState(() => ({
-    fullName: '',
-    email: '',
     origin: '',
     destination: '',
     startDate: '',
@@ -178,20 +176,14 @@ export default function PlanPage() {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
-  const [emailSent, setEmailSent] = useState(false)
 
   const peopleEditable = form.travelType === 'Family' || form.travelType === 'Group/Friends'
 
   async function onSubmit(e) {
     e.preventDefault()
     setError(null)
-    setEmailSent(false)
     setResult(null)
 
-    if (!form.fullName.trim() || !form.email.trim()) {
-      setError('Please enter your full name and email.')
-      return
-    }
     if (!form.origin.trim() || !form.destination.trim()) {
       setError('Please enter origin and destination.')
       return
@@ -214,7 +206,6 @@ export default function PlanPage() {
       })
 
       setResult(response.trip)
-      setEmailSent(false)
     } catch (error) {
       if (error.status === 401) {
         localStorage.removeItem('tripguard-auth-token')
@@ -346,7 +337,6 @@ export default function PlanPage() {
         >
           ← Back to home
         </button>
-        {emailSent ? <div className="text-xs text-green-300">Itinerary sent to your email.</div> : null}
       </div>
 
       <div className="rounded-3xl border border-[color:var(--glass-border)] bg-[color:var(--glass)] p-5 backdrop-blur-xl">
@@ -354,29 +344,6 @@ export default function PlanPage() {
           <div className="text-sm text-[color:var(--text-muted)]">Fill your details and preferences to get a personalized travel plan.</div>
 
           <form onSubmit={onSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
-          <label className="text-sm text-[color:var(--text-soft)]">
-            Full Name
-            <input
-              className="mt-1 w-full rounded-xl bg-[color:var(--glass)] px-3 py-2 outline-none ring-1 ring-[color:var(--glass-border)]"
-              value={form.fullName}
-              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-              required
-              placeholder="Full Name"
-            />
-          </label>
-
-          <label className="text-sm text-[color:var(--text-soft)]">
-            Email
-            <input
-              className="mt-1 w-full rounded-xl bg-[color:var(--glass)] px-3 py-2 outline-none ring-1 ring-[color:var(--glass-border)]"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              required
-              placeholder="Email"
-            />
-          </label>
-
           <div className="relative md:col-span-1">
             <label className="text-sm text-[color:var(--text-soft)]">
               Origin
@@ -387,7 +354,7 @@ export default function PlanPage() {
                   setOriginQuery(e.target.value)
                   setForm((f) => ({ ...f, origin: e.target.value }))
                 }}
-                placeholder="e.g. Mumbai, India"
+                placeholder="e.g. Bareilly, India"
                 required
               />
             </label>
@@ -433,7 +400,7 @@ export default function PlanPage() {
                   setDestQuery(e.target.value)
                   setForm((f) => ({ ...f, destination: e.target.value }))
                 }}
-                placeholder="e.g. Bali, Indonesia"
+                placeholder="e.g. Delhi, India"
                 required
               />
             </label>
@@ -494,7 +461,7 @@ export default function PlanPage() {
           </label>
 
           <label className="text-sm text-[color:var(--text-soft)]">
-            Budget ($)
+            Budget (₹ )
             <input
               className="mt-1 w-full rounded-xl bg-[color:var(--glass)] px-3 py-2 outline-none ring-1 ring-[color:var(--glass-border)]"
               type="number"
@@ -892,13 +859,6 @@ export default function PlanPage() {
             </div>
           </div>
 
-          {/* Email Notification */}
-          {result.emailSent && (
-            <div className="rounded-3xl border border-green-400/20 bg-green-400/10 p-4 text-center">
-              <div className="text-sm font-semibold text-green-300">📧 Itinerary Sent!</div>
-              <div className="mt-1 text-xs text-green-200">Your complete itinerary has been sent to your email.</div>
-            </div>
-          )}
         </div>
       ) : null}
 
