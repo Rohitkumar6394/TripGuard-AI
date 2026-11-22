@@ -270,8 +270,6 @@ export default function PlanPage() {
 
       {result && <div className="mt-6 space-y-5">
         <TripListings trip={result} />
-        <h2 className="text-xl font-bold">Suggested stops by day</h2>
-        {result.optimizedItinerary.length ? result.optimizedItinerary.map(day => <p key={day} className="whitespace-pre-line">{day}</p>) : <p>No mapped stops found.</p>}
       </div>}
     </main>
   )

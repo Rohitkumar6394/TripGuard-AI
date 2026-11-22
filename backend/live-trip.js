@@ -44,32 +44,46 @@ export async function weatherAt(place) {
 }
 
 const categories = {
-  resorts: ['tourism:resort', 'leisure:resort'],
-  hotels: ['tourism:hotel', 'tourism:guest_house', 'tourism:hostel'],
-  stores: ['shop'],
-  attractions: ['tourism:attraction', 'tourism:museum', 'tourism:viewpoint', 'tourism:gallery'],
+  resorts: ['resort_hotel'],
+  hotels: ['hotel', 'guest_house', 'hostel'],
+  stores: ['shopping_mall', 'market', 'store'],
+  attractions: ['tourist_attraction', 'museum', 'art_gallery'],
 }
 
 async function nearbyPlaces(place) {
-  const groups = await Promise.all(Object.entries(categories).map(async ([category, tags]) => {
-    const url = new URL('reverse', (process.env.PHOTON_URL || 'https://photon.komoot.io').replace(/\/?$/, '/'))
-    url.search = new URLSearchParams({ lat: place.latitude, lon: place.longitude, radius: 5, limit: 8 })
-    for (const tag of tags) url.searchParams.append('osm_tag', tag)
-    const data = await readJson(url, 'Place search')
-    if (!Array.isArray(data.features)) throw new LookupError(503, 'Invalid response from place search.')
-    const places = data.features.flatMap(({ properties: p }) => {
-      const type = { N: 'node', W: 'way', R: 'relation' }[p?.osm_type]
-      if (!p?.name || !type || !p.osm_id || !tags.some(tag => tag === p.osm_key || tag === p.osm_key + ':' + p.osm_value)) return []
-      return [{ name: p.name, kind: p.osm_value, mapUrl: 'https://www.openstreetmap.org/' + type + '/' + p.osm_id }]
-    })
-    return [category, places]
+  if (!process.env.GOOGLE_PLACES_API_KEY) return { places: {}, placesStatus: 'unconfigured' }
+  const results = await Promise.all(Object.entries(categories).map(async ([category, types]) => {
+    try {
+      const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': process.env.GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.attributions',
+        },
+        body: JSON.stringify({
+          includedPrimaryTypes: types, maxResultCount: 8,
+          locationRestriction: { circle: { center: { latitude: place.latitude, longitude: place.longitude }, radius: category === 'resorts' ? 25000 : 5000 } },
+        }),
+        signal: AbortSignal.timeout(12000),
+      })
+      if (!response.ok) throw new Error('HTTP ' + response.status)
+      const data = await response.json()
+      return [category, (data.places || []).filter(p => p.id && p.displayName?.text).map(p => ({
+        id: p.id, name: p.displayName.text, address: p.formattedAddress, rating: p.rating,
+        reviews: p.userRatingCount, mapUrl: p.googleMapsUri, attributions: p.attributions,
+      }))]
+    } catch (error) {
+      console.warn('Google Places lookup failed for', category, error.message)
+      return [category, null]
+    }
   }))
-  return Object.fromEntries(groups)
+  return { places: Object.fromEntries(results), placesStatus: 'requested' }
 }
 
 export async function liveTrip(input) {
   const place = await resolveDestination(input.destination)
-  const [places, weather] = await Promise.all([nearbyPlaces(place), weatherAt(place).catch(() => null)])
+  const [listings, weather] = await Promise.all([nearbyPlaces(place), weatherAt(place).catch(() => null)])
   const forecast = (weather?.daily?.time || []).flatMap((date, i) => {
     if (date < input.startDate || date > input.endDate) return []
     const low = weather.daily.temperature_2m_min?.[i]
@@ -77,12 +91,12 @@ export async function liveTrip(input) {
     return Number.isFinite(low) && Number.isFinite(high) ? [date + ' · ' + low + ' to ' + high + ' °C'] : []
   })
   const days = Math.round((Date.parse(input.endDate) - Date.parse(input.startDate)) / 86400000) + 1
-  const stops = [...places.attractions, ...places.stores]
+  const stops = [...new Map([...(listings.places.attractions || []), ...(listings.places.stores || [])].map(p => [p.id, p])).values()]
   const dayCount = Math.min(days, stops.length)
   const itinerary = Array.from({length: dayCount}, (_, i) => 'Day ' + (i + 1))
   stops.forEach((stop, i) => { itinerary[i % dayCount] += '\n' + stop.name })
   return {
-    itineraryId: randomUUID(), checkedAt: new Date(), places,
+    itineraryId: randomUUID(), checkedAt: new Date(), ...listings,
     resolvedLocation: [place.name, place.admin1, place.country].filter(Boolean).join(', '),
     weatherInsights: forecast.join('\n') || (weather ? 'No forecast covers these trip dates yet.' : 'Weather lookup unavailable.'),
     optimizedItinerary: itinerary,

@@ -11,6 +11,7 @@ WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
+ARG VITE_GOOGLE_MAPS_EMBED_KEY
 RUN npm run build
 USER node
 CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173", "--strictPort"]

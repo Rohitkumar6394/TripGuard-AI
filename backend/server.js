@@ -55,9 +55,13 @@ const Trip = mongoose.model(
 const demoFields = ['hotels', 'transportDetails', 'costPredictor', 'safetyScore', 'safetyAlerts', 'emergencyInfo', 'aiRecommendations']
 
 function tripForDisplay(trip) {
-  if (trip.checkedAt) return trip
+  if (trip.checkedAt) {
+    const { places, optimizedItinerary, ...summary } = trip
+    return summary
+  }
   const summary = { ...trip }
   for (const field of [...demoFields, 'optimizedItinerary', 'weatherInsights']) delete summary[field]
+  delete summary.places
   return summary
 }
 
@@ -262,7 +266,7 @@ const server = createServer(async (request, response) => {
       if (![body.startDate, body.endDate].every(date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().startsWith(date))) {
         return sendJson(response, 400, { message: 'Enter valid trip dates.' })
       }
-      const plan = await liveTrip(body)
+      const { places, placesStatus, optimizedItinerary, ...plan } = await liveTrip(body)
 
       const trip = await Trip.create({
         userId: user._id,
@@ -277,7 +281,7 @@ const server = createServer(async (request, response) => {
         preferences: String(body.preferences || '').trim(),
         ...plan,
       })
-      return sendJson(response, 201, { trip })
+      return sendJson(response, 201, { trip: { ...trip.toObject(), places, placesStatus, optimizedItinerary } })
     }
 
     if (request.method === 'GET' && url.pathname === '/api/trips') {
@@ -294,11 +298,11 @@ const server = createServer(async (request, response) => {
       const filter = { _id: refreshMatch[1], userId: user._id }
       const saved = await Trip.findOne(filter).lean()
       if (!saved) return sendJson(response, 404, { message: 'Trip not found.' })
-      const update = await liveTrip({ ...saved, startDate: saved.startDate.toISOString().slice(0, 10), endDate: saved.endDate.toISOString().slice(0, 10) })
+      const { places, placesStatus, optimizedItinerary, ...update } = await liveTrip({ ...saved, startDate: saved.startDate.toISOString().slice(0, 10), endDate: saved.endDate.toISOString().slice(0, 10) })
       delete update.itineraryId
-      const obsolete = Object.fromEntries(demoFields.map(key => [key, 1]))
+      const obsolete = Object.fromEntries([...demoFields, 'places', 'optimizedItinerary'].map(key => [key, 1]))
       const trip = await Trip.findOneAndUpdate(filter, { $set: update, $unset: obsolete }, { new: true }).lean()
-      return sendJson(response, 200, { trip })
+      return sendJson(response, 200, { trip: { ...trip, places, placesStatus, optimizedItinerary } })
     }
 
     const tripMatch = url.pathname.match(/^\/api\/trips\/([^/]+)$/)

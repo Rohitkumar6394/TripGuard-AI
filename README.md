@@ -24,6 +24,21 @@ Accounts and trips persist in a Docker volume separate from your native MongoDB 
 By default, restarting the API requires signing in again.
 To retain sessions across restarts, set a private random `TOKEN_SECRET` in a `.env` file next to `compose.yaml`.
 
+### Google Maps setup
+
+Enable Places API (New) in a billing-enabled Google Cloud project.
+Set `GOOGLE_PLACES_API_KEY` in `backend/.env` for native startup or the root `.env` for Compose.
+Restrict this key to Places API (New) and your server IP where available.
+Creating or refreshing a trip makes four Nearby Search requests and requests rating fields, which affect billing.
+Check [Google Places pricing](https://developers.google.com/maps/documentation/places/web-service/usage-and-billing) before enabling it.
+
+For the interactive map inside TripGuard, enable Maps Embed API and create a separate website-restricted key for the frontend origin.
+Set `VITE_GOOGLE_MAPS_EMBED_KEY` in `frontend/.env` or the Compose root `.env`.
+Restart the native API and frontend, or rerun `docker compose up --build -d`.
+Google Maps search links work without either key.
+TripGuard stores trip inputs and the weather snapshot.
+Use **Refresh destination listings** on a saved trip to retrieve current Google place details and suggested stops.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -49,7 +64,7 @@ TripGuard AI combines travel planning with safety analysis:
 - Users sign up / log in with email + password.
 - They submit a trip form (origin, destination, dates, budget, transport, travel type, people, preferences).
 - Open-Meteo resolves the city and provides its forecast.
-- Photon searches OpenStreetMap within 5 km of the city center for resorts, lodging, shops and attractions.
+- Google Places Nearby Search looks for hotels, stores and attractions within 5 km of the city center and resorts within 25 km.
 - The itinerary groups returned sights and stores into suggested days.
 - Saved trips show the lookup time and can be refreshed from the Itinerary page, including trips created by the old demo generator.
 - The safety chatbot provides general guidance and can fetch current weather.
@@ -200,10 +215,8 @@ Auto-fields: `createdAt`, `updatedAt`.
 | `preferences` | string | default `""` |
 | `itineraryId` | string | required, unique |
 | `weatherInsights` | string | |
-| `places` | object | grouped Photon results |
 | `checkedAt` | Date | lookup timestamp |
 | `resolvedLocation` | string | matched city, region and country |
-| `optimizedItinerary` | array | one string per day |
 
 Auto-fields: `createdAt`, `updatedAt`.
 
@@ -257,7 +270,7 @@ Protected routes in the frontend redirect unauthenticated users to `/login`.
 | `CLIENT_ORIGIN` | `http://localhost:5173` | CORS allowed origin |
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/tripguard_ai` | MongoDB connection string |
 | `TOKEN_SECRET` | Random per process | HMAC signing secret — change before deploying |
-| `PHOTON_URL` | `https://photon.komoot.io` | Base URL of the Photon instance used for nearby listings. |
+| `GOOGLE_PLACES_API_KEY` | empty | Server key restricted to Places API (New). |
 
 ### Frontend — `frontend/.env` (copy from `.env.example`, optional)
 

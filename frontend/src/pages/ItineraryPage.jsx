@@ -4,14 +4,6 @@ import { CalendarDays, MapPin, Route, Sparkles } from 'lucide-react'
 import TripListings from '../components/TripListings.jsx'
 import { apiFetch } from '../lib/api.js'
 
-function daysArrayFromItinerary(itinerary) {
-  if (!itinerary) return []
-  if (Array.isArray(itinerary)) return itinerary
-  if (Array.isArray(itinerary.days)) return itinerary.days
-  if (typeof itinerary === 'string') return itinerary.split('\n').filter(Boolean)
-  return []
-}
-
 export default function ItineraryPage() {
   const navigate = useNavigate()
   const [trips, setTrips] = useState([])
@@ -41,8 +33,6 @@ export default function ItineraryPage() {
   }, [navigate])
 
   const trip = useMemo(() => trips.find((t) => t._id === tripId), [trips, tripId])
-  const days = useMemo(() => daysArrayFromItinerary(trip?.checkedAt ? trip.optimizedItinerary : null), [trip])
-
   async function refresh() {
     setRefreshing(true)
     setError('')
@@ -147,41 +137,7 @@ export default function ItineraryPage() {
                     ) : null}
 
                     <button type="button" disabled={refreshing} onClick={refresh} className="mb-4 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">{refreshing ? 'Checking…' : 'Refresh destination listings'}</button>
-                    <TripListings trip={trip} />
-                    <div className="mt-6 grid gap-6">
-                      {days.map((d, idx) => {
-                        const lines = String(d).split('\n').filter((l) => l.trim())
-                        const title = lines[0] || `Day ${idx + 1}`
-                        const activities = lines.slice(1)
-
-                        return (
-                          <div key={idx} className="relative ml-2 border-l-2 border-orange-500/30 pl-8">
-                            <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-4 border-[color:var(--glass-strong)] bg-orange-500" />
-                            <h3 className="mb-3 text-sm font-bold text-orange-200">{title}</h3>
-                            <div className="space-y-3">
-                              {activities.length ? (
-                                activities.map((act, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex gap-3 rounded-xl border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] p-3 text-sm text-[color:var(--text-soft)] transition hover:border-orange-500/40"
-                                  >
-                                    <span className="shrink-0 text-orange-400">•</span>
-                                    <span className="leading-relaxed">{act.replace(/^[•*-]\s*/, '')}</span>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-xs italic text-[color:var(--text-muted)]">
-                                  Detailed plan for this day is coming soon...
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                      {days.length === 0 ? (
-                        <div className="text-sm text-[color:var(--text-muted)]">No itinerary returned.</div>
-                      ) : null}
-                    </div>
+                    <TripListings key={trip._id} trip={trip} />
                   </div>
                 </>
               ) : (
