@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CalendarDays, MapPin, Route, Sparkles } from 'lucide-react'
+import TripBudget from '../components/TripBudget.jsx'
+import TripListings from '../components/TripListings.jsx'
 import { apiFetch } from '../lib/api.js'
-
-function daysArrayFromItinerary(itinerary) {
-  if (!itinerary) return []
-  if (Array.isArray(itinerary)) return itinerary
-  if (Array.isArray(itinerary.days)) return itinerary.days
-  if (typeof itinerary === 'string') return itinerary.split('\n').filter(Boolean)
-  return []
-}
 
 export default function ItineraryPage() {
   const navigate = useNavigate()
   const [trips, setTrips] = useState([])
   const [tripId, setTripId] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -39,18 +34,29 @@ export default function ItineraryPage() {
   }, [navigate])
 
   const trip = useMemo(() => trips.find((t) => t._id === tripId), [trips, tripId])
-  const days = useMemo(() => daysArrayFromItinerary(trip?.optimizedItinerary), [trip?.optimizedItinerary])
+  async function refresh() {
+    setRefreshing(true)
+    setError('')
+    try {
+      const data = await apiFetch('/api/trips/' + tripId + '/refresh', { method: 'POST' })
+      setTrips(current => current.map(item => item._id === data.trip._id ? data.trip : item))
+    } catch (e) {
+      setError(e.message || 'Refresh failed.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 text-sm font-bold text-emerald-500">
-            <Route size={17} /> AI ITINERARY
+            <Route size={17} /> SAVED ITINERARIES
           </div>
           <h1 className="mt-2 text-4xl font-black">Your Day-wise Itinerary</h1>
           <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-            Pick a saved trip to view its full AI-generated travel schedule.
+            Pick a saved trip to view its listings and suggested stops.
           </p>
         </div>
         <Link to="/dashboard" className="text-sm font-semibold text-emerald-500">← Dashboard</Link>
@@ -72,7 +78,7 @@ export default function ItineraryPage() {
             </div>
             <h2 className="mt-4 text-xl font-bold">No trips yet</h2>
             <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-              Create a trip to generate an AI itinerary.
+              Create a trip to look up places.
             </p>
             <Link
               to="/plan"
@@ -104,8 +110,6 @@ export default function ItineraryPage() {
                   </div>
                   <div className="mt-1 flex flex-wrap gap-2 text-xs text-[color:var(--text-muted)]">
                     <span>{new Date(t.startDate).toLocaleDateString()}</span>
-                    <span>{daysArrayFromItinerary(t.optimizedItinerary).length} days</span>
-                    <span>Safety {t.safetyScore}/100</span>
                   </div>
                 </button>
               ))}
@@ -133,40 +137,10 @@ export default function ItineraryPage() {
                       </p>
                     ) : null}
 
-                    <div className="grid gap-6">
-                      {days.map((d, idx) => {
-                        const lines = String(d).split('\n').filter((l) => l.trim())
-                        const title = lines[0] || `Day ${idx + 1}`
-                        const activities = lines.slice(1)
-
-                        return (
-                          <div key={idx} className="relative ml-2 border-l-2 border-orange-500/30 pl-8">
-                            <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-4 border-[color:var(--glass-strong)] bg-orange-500" />
-                            <h3 className="mb-3 text-sm font-bold text-orange-200">{title}</h3>
-                            <div className="space-y-3">
-                              {activities.length ? (
-                                activities.map((act, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex gap-3 rounded-xl border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] p-3 text-sm text-[color:var(--text-soft)] transition hover:border-orange-500/40"
-                                  >
-                                    <span className="shrink-0 text-orange-400">•</span>
-                                    <span className="leading-relaxed">{act.replace(/^[•*-]\s*/, '')}</span>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-xs italic text-[color:var(--text-muted)]">
-                                  Detailed plan for this day is coming soon...
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                      {days.length === 0 ? (
-                        <div className="text-sm text-[color:var(--text-muted)]">No itinerary returned.</div>
-                      ) : null}
-                    </div>
+                    <button type="button" disabled={refreshing} onClick={refresh} className="mb-4 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">{refreshing ? 'Checking…' : 'Refresh destination listings'}</button>
+                    <Link to="/plan" state={{ trip }} className="ml-3 text-sm font-semibold underline">Adjust trip budget and party</Link>
+                    <div className="mb-4"><TripBudget trip={trip} places={trip.places}/></div>
+                    <TripListings key={trip._id} trip={trip} />
                   </div>
                 </>
               ) : (

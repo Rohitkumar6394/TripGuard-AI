@@ -1,8 +1,8 @@
-# TripGuard AI — Frontend + Backend + MongoDB Setup
+# TripGuard AI - Frontend + Backend + MongoDB Setup
 
 ## 1. Install MongoDB
 
-### Option A — MongoDB Atlas (recommended)
+### Option A - MongoDB Atlas (recommended)
 1. Create a free MongoDB Atlas cluster.
 2. Create a database user.
 3. In **Network Access**, allow your current IP for local development.
@@ -17,7 +17,7 @@ CLIENT_ORIGIN=http://localhost:5173
 TOKEN_SECRET=use-a-long-random-secret
 ```
 
-### Option B — Local MongoDB
+### Option B - Local MongoDB
 Install MongoDB Community Server and make sure the MongoDB service is running.
 
 Use:
@@ -29,13 +29,15 @@ You can view the database with MongoDB Compass.
 
 ## 2. Backend setup
 
-Open terminal:
+Open a terminal at the repository root with Node.js 24 or 26 and npm installed.
 ```bash
-cd "TripGuard AI/backend"
-npm install
+cd backend
+npm ci
 ```
 
-Copy `.env.example` to `.env` and update `MONGODB_URI` and `TOKEN_SECRET`.
+Copy `.env.example` to `.env` and set `MONGODB_URI` and a private `TOKEN_SECRET`.
+Add `GOOGLE_PLACES_API_KEY` to enable live place listings.
+See the [Google Maps setup](README.md#google-maps-setup) for key restrictions and the optional embed key.
 
 Start:
 ```bash
@@ -60,10 +62,10 @@ It should return:
 
 ## 3. Frontend setup
 
-Open another terminal:
+Open another terminal at the repository root.
 ```bash
-cd "TripGuard AI/frontend"
-npm install
+cd frontend
+npm ci
 npm run dev
 ```
 
@@ -77,77 +79,9 @@ If your backend URL is different, create `frontend/.env`:
 VITE_API_URL=http://localhost:4000
 ```
 
-## 4. MongoDB collections
+## 4. Verify persistence
 
-The backend creates these collections automatically:
-
-### users
-Stores:
-- name
-- email
-- hashed password
-- createdAt / updatedAt
-
-### trips
-Stores:
-- userId
-- origin / destination
-- startDate / endDate
-- budget
-- transportMode
-- travelType
-- people
-- preferences
-- generated itinerary
-- hotels
-- weather insight
-- transport details
-- cost predictor
-- recommendations
-- createdAt / updatedAt
-
-No manual collection creation is required.
-
-## 5. Application flow
-
-```text
-React Frontend
-      |
-      | POST /api/auth/signup
-      | POST /api/auth/login
-      v
-Node.js Backend
-      |
-      | Mongoose
-      v
-MongoDB
-      |
-      | saved user/trip data
-      v
-React Frontend
-```
-
-For trip planning:
-
-```text
-Login
-  ↓
-Plan Form
-  ↓
-POST /api/trips
-  ↓
-Backend validates data
-  ↓
-Backend generates itinerary/budget/hotel data
-  ↓
-MongoDB saves the trip
-  ↓
-Frontend displays the saved result
-```
-
-## 6. Important
-
-- Never put `MONGODB_URI` inside the React frontend.
-- Never commit `backend/.env` to GitHub.
-- Change `TOKEN_SECRET` before deployment.
-- The current trip generator is deterministic demo logic. A real AI/LLM provider can be connected later without changing the MongoDB structure.
+Create an account, generate a trip, then reopen it under **Itinerary**.
+MongoDB creates the users and trips collections automatically.
+The saved trip includes the group budget, planning rates, available activity count and forecast snapshot.
+Choose **Refresh destination listings** to retrieve venue names and the current suggested stops.
