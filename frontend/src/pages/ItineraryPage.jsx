@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CalendarDays, MapPin, Route, Sparkles } from 'lucide-react'
+import TripListings from '../components/TripListings.jsx'
 import { apiFetch } from '../lib/api.js'
 
 function daysArrayFromItinerary(itinerary) {
@@ -16,6 +17,7 @@ export default function ItineraryPage() {
   const [trips, setTrips] = useState([])
   const [tripId, setTripId] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -39,18 +41,31 @@ export default function ItineraryPage() {
   }, [navigate])
 
   const trip = useMemo(() => trips.find((t) => t._id === tripId), [trips, tripId])
-  const days = useMemo(() => daysArrayFromItinerary(trip?.optimizedItinerary), [trip?.optimizedItinerary])
+  const days = useMemo(() => daysArrayFromItinerary(trip?.checkedAt ? trip.optimizedItinerary : null), [trip])
+
+  async function refresh() {
+    setRefreshing(true)
+    setError('')
+    try {
+      const data = await apiFetch('/api/trips/' + tripId + '/refresh', { method: 'POST' })
+      setTrips(current => current.map(item => item._id === data.trip._id ? data.trip : item))
+    } catch (e) {
+      setError(e.message || 'Refresh failed.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 text-sm font-bold text-emerald-500">
-            <Route size={17} /> AI ITINERARY
+            <Route size={17} /> SAVED ITINERARIES
           </div>
           <h1 className="mt-2 text-4xl font-black">Your Day-wise Itinerary</h1>
           <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-            Pick a saved trip to view its full AI-generated travel schedule.
+            Pick a saved trip to view its listings and suggested stops.
           </p>
         </div>
         <Link to="/dashboard" className="text-sm font-semibold text-emerald-500">← Dashboard</Link>
@@ -72,7 +87,7 @@ export default function ItineraryPage() {
             </div>
             <h2 className="mt-4 text-xl font-bold">No trips yet</h2>
             <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-              Create a trip to generate an AI itinerary.
+              Create a trip to look up places.
             </p>
             <Link
               to="/plan"
@@ -104,8 +119,6 @@ export default function ItineraryPage() {
                   </div>
                   <div className="mt-1 flex flex-wrap gap-2 text-xs text-[color:var(--text-muted)]">
                     <span>{new Date(t.startDate).toLocaleDateString()}</span>
-                    <span>{daysArrayFromItinerary(t.optimizedItinerary).length} days</span>
-                    <span>Safety {t.safetyScore}/100</span>
                   </div>
                 </button>
               ))}
@@ -133,7 +146,9 @@ export default function ItineraryPage() {
                       </p>
                     ) : null}
 
-                    <div className="grid gap-6">
+                    <button type="button" disabled={refreshing} onClick={refresh} className="mb-4 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">{refreshing ? 'Checking…' : 'Refresh destination listings'}</button>
+                    <TripListings trip={trip} />
+                    <div className="mt-6 grid gap-6">
                       {days.map((d, idx) => {
                         const lines = String(d).split('\n').filter((l) => l.trim())
                         const title = lines[0] || `Day ${idx + 1}`

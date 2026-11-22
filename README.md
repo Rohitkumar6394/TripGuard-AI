@@ -1,8 +1,28 @@
 # TripGuard AI
 
-AI-powered travel safety and planning platform. TripGuard AI generates personalized trip plans with a day-wise itinerary, budget estimation, hotel suggestions, weather insights, and risk/safety analysis — all managed from a single dashboard with an integrated safety chatbot.
+TripGuard looks up places near a destination and the available weather forecast for the travel dates.
 
 ---
+
+## Quick start on Windows, macOS, and Linux
+
+Start Docker Desktop in Linux container mode, or use Docker Engine with the Compose plugin on Linux.
+From the repository root, run the following command.
+
+```sh
+docker compose up --build -d
+```
+
+Open [TripGuard signup](http://localhost:5173/signup) to create an account and plan a trip.
+The first start downloads the images and dependencies and needs internet access.
+Live destination searches also need internet access.
+Ports 5173 and 4000 must be free.
+If the native app is already running, stop its frontend and API before starting Compose.
+
+Use `docker compose logs -f` to inspect startup and `docker compose down` to stop the app.
+Accounts and trips persist in a Docker volume separate from your native MongoDB database.
+By default, restarting the API requires signing in again.
+To retain sessions across restarts, set a private random `TOKEN_SECRET` in a `.env` file next to `compose.yaml`.
 
 ## Table of Contents
 
@@ -28,11 +48,14 @@ TripGuard AI combines travel planning with safety analysis:
 
 - Users sign up / log in with email + password.
 - They submit a trip form (origin, destination, dates, budget, transport, travel type, people, preferences).
-- The backend generates a **deterministic demo plan** containing an optimized day-wise itinerary, cost breakdown, hotel suggestions, weather insight, safety score with alerts, and emergency contact info.
-- Results are saved to MongoDB and shown in the dashboard.
-- A **Safety Chatbot** answers travel-safety questions in the context of the user's saved trip (emergency numbers, night travel, documents, transport, live weather).
+- Open-Meteo resolves the city and provides its forecast.
+- Photon searches OpenStreetMap within 5 km of the city center for resorts, lodging, shops and attractions.
+- The itinerary groups returned sights and stores into suggested days.
+- Saved trips show the lookup time and can be refreshed from the Itinerary page, including trips created by the old demo generator.
+- The safety chatbot provides general guidance and can fetch current weather.
 
-> Note: The current trip generator uses deterministic demo logic, not a live AI/LLM provider. A real provider can be connected later without changing the MongoDB structure.
+Place coverage depends on the map and the provider's index.
+Room availability, rates, store inventory and travel safety scores have no connected source.
 
 ---
 
@@ -67,7 +90,7 @@ Sign in
   →  Fill Trip Plan form
   →  POST /api/trips
   →  Backend validates input
-  →  Backend generates itinerary / budget / hotels / safety data
+  →  Backend resolves destination and fetches mapped places and weather
   →  Trip saved to MongoDB
   →  Frontend renders the full plan
 ```
@@ -120,13 +143,10 @@ TripGuard AI/
 
 | Feature | Description |
 |--------|-------------|
-| **AI Trip Planning** | Personalized plan from destination, dates, budget, and interests. |
-| **AI Itinerary** | Day-by-day itinerary with activities and travel suggestions. |
-| **Budget Planner** | Estimates accommodation, food, local transport, activities, travel, and miscellaneous costs. |
-| **Safety / Risk Analysis** | Safety score (±85), risk alerts, precautions, and emergency contacts. |
-| **Weather** | Live forecast fetched from Open-Meteo for the destination. |
-| **Safety Chatbot** | Answers safety questions using the context of a saved trip. |
-| **Hotels** | Three demo hotel suggestions with ratings, prices, and Google Maps links. |
+| **Destination listings** | Named resorts, hotels, stores and attractions with individual map links. |
+| **Itinerary** | Suggested stops drawn from the destination lookup. |
+| **Weather** | Available daily forecasts that overlap the trip dates. |
+| **Safety Chatbot** | General travel guidance and current weather. |
 | **Dashboard** | Saved trips, stat cards, quick weather check, and quick links. |
 
 ---
@@ -146,6 +166,7 @@ Base URL: `http://localhost:4000`
 | POST   | `/api/trips`        | Yes  | Create a trip plan. Body: `{ origin, destination, startDate, endDate, budget, transportMode, travelType, people, preferences, fullName?, email? }`. |
 | GET    | `/api/trips`        | Yes  | List user's trips (newest first). |
 | GET    | `/api/trips/:id`    | Yes  | Get one of the user's trips. |
+| POST | `/api/trips/:id/refresh` | Yes | Refresh a saved trip from the providers. |
 
 Validation rules:
 - Origin, destination, start date, and end date are required.
@@ -179,13 +200,9 @@ Auto-fields: `createdAt`, `updatedAt`.
 | `preferences` | string | default `""` |
 | `itineraryId` | string | required, unique |
 | `weatherInsights` | string | |
-| `transportDetails` | string | |
-| `hotels` | array | demo hotel cards |
-| `costPredictor` | string | budget breakdown text |
-| `aiRecommendations` | string | |
-| `safetyScore` | number | default `85` |
-| `safetyAlerts` | array | |
-| `emergencyInfo` | array | e.g. Police `100`, Ambulance `108` |
+| `places` | object | grouped Photon results |
+| `checkedAt` | Date | lookup timestamp |
+| `resolvedLocation` | string | matched city, region and country |
 | `optimizedItinerary` | array | one string per day |
 
 Auto-fields: `createdAt`, `updatedAt`.
@@ -239,9 +256,8 @@ Protected routes in the frontend redirect unauthenticated users to `/login`.
 | `PORT` | `4000` | API port |
 | `CLIENT_ORIGIN` | `http://localhost:5173` | CORS allowed origin |
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/tripguard_ai` | MongoDB connection string |
-| `TOKEN_SECRET` | `change-this-in-production` | HMAC signing secret — change before deploying |
-| `OPENAI_API_KEY` | — | Optional; enables AI-generated itineraries. Basic plans are used when unavailable. |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Optional model used for AI-generated itineraries |
+| `TOKEN_SECRET` | Random per process | HMAC signing secret — change before deploying |
+| `PHOTON_URL` | `https://photon.komoot.io` | Base URL of the Photon instance used for nearby listings. |
 
 ### Frontend — `frontend/.env` (copy from `.env.example`, optional)
 
@@ -256,14 +272,14 @@ Protected routes in the frontend redirect unauthenticated users to `/login`.
 See also [`SETUP_MONGODB.md`](SETUP_MONGODB.md) for details.
 
 ### Prerequisites
-- Node.js 18+ (20+ recommended)
+- Node.js 24 or 26 with npm
 - MongoDB (Atlas cluster or local server)
 
 ### 1. Backend
 
 ```bash
 cd "backend"
-npm install
+npm ci
 # copy .env.example to .env and set MONGODB_URI + TOKEN_SECRET
 npm run dev
 ```
@@ -280,7 +296,7 @@ Health check: open `http://localhost:4000/api/health` → `{"ok":true,"database"
 
 ```bash
 cd "frontend"
-npm install
+npm ci
 npm run dev
 ```
 
@@ -312,7 +328,7 @@ Frontend:
 ## Roadmap Ideas
 
 - Connect a real AI/LLM provider for itinerary, budget, and recommendation generation.
-- Replace demo hotel data with a booking/aggregator API.
+- Connect a booking provider for date-specific room rates and availability.
 - Email delivery of the itinerary (the UI already shows an "Itinerary sent" state).
 - Live government travel advisories per destination.
 - Automated tests and a proper CI pipeline.

@@ -1,18 +1,12 @@
 import 'dotenv/config'
-import OpenAI from 'openai'
+import { liveTrip, resolveDestination, weatherAt, LookupError } from './live-trip.js'
 import { createServer } from 'node:http'
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHmac } from 'node:crypto'
+import { randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto'
 import mongoose from 'mongoose'
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null
-
-const AI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
-
 const port = Number(process.env.PORT || 4000)
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/tripguard_ai'
 const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173'
-const tokenSecret = process.env.TOKEN_SECRET || 'change-this-in-production'
+const tokenSecret = process.env.TOKEN_SECRET || randomBytes(32).toString('hex')
 
 const User = mongoose.model(
   'User',
@@ -41,12 +35,15 @@ const Trip = mongoose.model(
       people: { type: Number, default: 1 },
       preferences: { type: String, default: '' },
       itineraryId: { type: String, required: true, unique: true },
+      checkedAt: Date,
+      resolvedLocation: String,
+      places: mongoose.Schema.Types.Mixed,
       weatherInsights: String,
       transportDetails: String,
       hotels: { type: Array, default: [] },
       costPredictor: String,
       aiRecommendations: String,
-      safetyScore: { type: Number, default: 85 },
+      safetyScore: Number,
       safetyAlerts: { type: Array, default: [] },
       emergencyInfo: { type: Array, default: [] },
       optimizedItinerary: { type: Array, default: [] },
@@ -54,6 +51,15 @@ const Trip = mongoose.model(
     { timestamps: true }
   )
 )
+
+const demoFields = ['hotels', 'transportDetails', 'costPredictor', 'safetyScore', 'safetyAlerts', 'emergencyInfo', 'aiRecommendations']
+
+function tripForDisplay(trip) {
+  if (trip.checkedAt) return trip
+  const summary = { ...trip }
+  for (const field of [...demoFields, 'optimizedItinerary', 'weatherInsights']) delete summary[field]
+  return summary
+}
 
 function hashPassword(password, salt = randomBytes(16).toString('hex')) {
   const hash = scryptSync(password, salt, 64).toString('hex')
@@ -110,245 +116,11 @@ async function readBody(request) {
   return JSON.parse(body)
 }
 
-function travelDays(startDate, endDate) {
-  return Math.max(1, Math.ceil((new Date(endDate) - new Date(startDate)) / 86400000))
-}
-
-function buildTripPlan(input) {
-  const destination = String(input.destination).trim()
-  const origin = String(input.origin).trim()
-  const people = Math.max(1, Number(input.people) || 1)
-  const days = travelDays(input.startDate, input.endDate)
-  const transportMode = String(input.transportMode || 'Flight')
-  const preferences = String(input.preferences || '').trim()
-
-  const accommodation = 95 * days
-  const food = 40 * days * people
-  const localTransport = 25 * days * people
-  const activities = 45 * days * people
-  const roundTripTravel = 250 * people
-  const subtotal = accommodation + food + localTransport + activities + roundTripTravel
-  const miscellaneous = Math.round(subtotal * 0.1)
-  const total = subtotal + miscellaneous
-
-  const safetyAlerts = [
-    `Check the latest weather and local travel advisories for ${destination} before departure.`,
-    `Keep your phone charged, carry identification, and share your itinerary with a trusted contact.`,
-    `Avoid isolated areas after dark and use verified transport services.`
-  ]
-  const safetyScore = preferences.toLowerCase().includes('adventure') ? 78 : 88
-
-  return {
-    itineraryId: `trip-${randomUUID()}`,
-    safetyScore,
-    safetyAlerts,
-    emergencyInfo: [
-      { service: 'Emergency', number: '112', note: 'India emergency response number' },
-      { service: 'Police', number: '100', note: 'Police assistance' },
-      { service: 'Ambulance', number: '108', note: 'Medical emergency assistance' }
-    ],
-    weatherInsights: `Safety weather check for ${destination}: conditions can vary by season. Check the local forecast and official advisories before departure.`,
-    transportDetails: `${transportMode} is selected for ${origin} → ${destination}. Estimated transport cost is included in the budget summary.`,
-    hotels: [
-      {
-        name: `${destination} Grand Hotel`,
-        price: 95,
-        rating: 4.4,
-        location: destination,
-        mapsLink: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`,
-      },
-      {
-        name: `${destination} Comfort Stay`,
-        price: 70,
-        rating: 4.2,
-        location: destination,
-        mapsLink: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`,
-      },
-      {
-        name: `${destination} Premium Resort`,
-        price: 145,
-        rating: 4.7,
-        location: destination,
-        mapsLink: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`,
-      },
-    ],
-    costPredictor: `Accommodation: $${accommodation}
-Food: $${food}
-Local Transport: $${localTransport}
-Sightseeing & Activities: $${activities}
-Round Trip Travel: $${roundTripTravel}
-Miscellaneous: $${miscellaneous}
-Total Estimated Budget: $${total}`,
-    aiRecommendations: `Start your day early to explore ${destination} comfortably.
-Try local food and reserve popular attractions in advance.
-Keep some flexible time for unexpected discoveries.
-${preferences ? `Focus your activities around: ${preferences}.` : 'Balance sightseeing with enough rest time.'}`,
-    optimizedItinerary: Array.from({ length: days }, (_, index) =>
-      `Day ${index + 1}
-• Explore a major attraction in ${destination}
-• Enjoy local food and nearby experiences
-• Relax and prepare for the next day`
-    ),
-  }
-}
-
-async function generateAIItinerary(input) {
-  if (!openai) {
-    throw new Error('OPENAI_API_KEY is missing in backend .env')
-  }
-
-  const startDate = new Date(input.startDate)
-  const endDate = new Date(input.endDate)
-
-  const days = Math.floor(
-  (endDate - startDate) / 86400000
-  ) + 1
-
-  if (!Number.isInteger(days) || days < 1 || days > 14) {
-    throw new Error('Trip duration must be between 1 and 14 days.')
-  }
-
-  const tripDetails = {
-    origin: String(input.origin || '').trim(),
-    destination: String(input.destination || '').trim(),
-    startDate: input.startDate,
-    endDate: input.endDate,
-    days,
-    budget: Number(input.budget) || 0,
-    currency: 'INR',
-    transportMode: String(input.transportMode || 'Flight'),
-    travelType: String(input.travelType || 'Solo'),
-    people: Math.max(1, Number(input.people) || 1),
-    preferences: String(input.preferences || '').slice(0, 1000),
-  }
-
-  const schema = {
-    type: 'object',
-    properties: {
-      summary: { type: 'string' },
-      recommendations: { type: 'string' },
-      days: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            day: { type: 'integer' },
-            date: { type: 'string' },
-            title: { type: 'string' },
-            activities: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  time: { type: 'string' },
-                  activity: { type: 'string' },
-                  description: { type: 'string' },
-                  estimatedCostINR: { type: 'number' }
-                },
-                required: [
-                  'time',
-                  'activity',
-                  'description',
-                  'estimatedCostINR'
-                ],
-                additionalProperties: false
-              }
-            }
-          },
-          required: ['day', 'date', 'title', 'activities'],
-          additionalProperties: false
-        }
-      }
-    },
-    required: ['summary', 'recommendations', 'days'],
-    additionalProperties: false
-  }
-
-  const response = await openai.chat.completions.create({
-    model: AI_MODEL,
-    messages: [
-      {
-        role: 'system',
-        content: `
-You are TripGuard AI, a professional travel itinerary planner.
-
-Create realistic, useful, destination-specific travel itineraries.
-
-Rules:
-- Generate exactly the requested number of days.
-- Use the supplied dates.
-- Consider the user's budget, group size and interests.
-- Organize each day into morning, afternoon and evening activities.
-- Include realistic estimated costs in INR.
-- Avoid inventing exact opening hours, ticket prices or live availability.
-- Do not claim hotels, tickets or transport are booked.
-- Include practical travel and rest time.
-- If information is uncertain, clearly say it should be verified.
-- Return only data matching the supplied JSON schema.
-        `
-      },
-      {
-        role: 'user',
-        content: JSON.stringify(tripDetails)
-      }
-    ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'trip_itinerary',
-        strict: true,
-        schema
-      }
-    }
-  })
-
-  const message = response.choices[0]?.message
-
-  if (message?.refusal) {
-    throw new Error('AI could not generate this itinerary.')
-  }
-
-  if (!message?.content) {
-    throw new Error('AI returned an empty itinerary.')
-  }
-
-  const result = JSON.parse(message.content)
-
-  if (!Array.isArray(result.days) || result.days.length !== days) {
-    throw new Error('AI returned an incomplete itinerary.')
-  }
-
-  // Keep the existing MongoDB field format compatible
-  // with PlanPage.jsx and ItineraryPage.jsx.
-  const optimizedItinerary = result.days.map((day) => {
-    const activities = day.activities.map((item) =>
-      `• ${item.time}: ${item.activity} - ${item.description} (Estimated: ₹${item.estimatedCostINR})`
-    )
-
-    return [
-      `Day ${day.day} - ${day.date}: ${day.title}`,
-      ...activities
-    ].join('\n')
-  })
-
-  return {
-    optimizedItinerary,
-    aiRecommendations: result.recommendations
-  }
-}
-
-
 async function getWeather(location) {
   const query = String(location || '').trim()
   if (!query) throw new Error('Location is required.')
-  const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`)
-  if (!geoResponse.ok) throw new Error('Weather location lookup failed.')
-  const geo = await geoResponse.json()
-  const place = geo.results?.[0]
-  if (!place) throw new Error('Could not find that destination.')
-  const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`)
-  if (!weatherResponse.ok) throw new Error('Weather service unavailable.')
-  const data = await weatherResponse.json()
+  const place = await resolveDestination(query)
+  const data = await weatherAt(place)
   const code = data.current?.weather_code
   const conditionMap = {0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Foggy',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Rain showers',81:'Rain showers',82:'Heavy showers',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'}
   return {
@@ -362,7 +134,7 @@ async function buildSafetyReply(message, trip) {
   const q = String(message || '').toLowerCase()
   const destination = trip?.destination || 'your destination'
   if (q.includes('emergency') || q.includes('police') || q.includes('ambulance')) {
-    return 'For India, call 112 for emergency response. Police: 100. Ambulance: 108. If you are abroad, use the local emergency number and contact your embassy/consulate when appropriate.'
+    return 'TripGuard has no verified emergency number for this location. Contact local emergency services or ask nearby staff for immediate help.'
   }
   if (q.includes('night') || q.includes('dark')) {
     return `For ${destination}, avoid isolated areas after dark, use verified transport, keep your phone charged, and share your live location/itinerary with a trusted contact. Check local advisories before going out.`
@@ -380,9 +152,6 @@ async function buildSafetyReply(message, trip) {
   }
   if (q.includes('transport') || q.includes('taxi') || q.includes('cab')) {
     return `Use verified transport providers for ${destination}, confirm the vehicle/driver details, avoid accepting unsolicited rides, and share your trip details with someone you trust.`
-  }
-  if (trip?.safetyAlerts?.length) {
-    return `For your ${trip.destination} trip, your current safety score is ${trip.safetyScore}/100. Key advice: ${trip.safetyAlerts[0]}`
   }
   return `For ${destination}, prioritize official travel advisories, weather checks, verified transport, secure accommodation, and communication with a trusted contact. I can also answer questions about emergencies, night travel, documents, transport, and weather.`
 }
@@ -490,16 +259,10 @@ const server = createServer(async (request, response) => {
         return sendJson(response, 400, { message: 'End date must be on or after the start date.' })
       }
 
-      const plan = buildTripPlan(body)
-
-      try {
-        const aiPlan = await generateAIItinerary(body)
-        plan.optimizedItinerary = aiPlan.optimizedItinerary
-        plan.aiRecommendations = aiPlan.aiRecommendations
-      } catch (error) {
-        console.error('AI itinerary generation failed; using the basic plan:', error)
-        plan.aiRecommendations = `AI itinerary generation was unavailable, so a basic plan is shown.\n${plan.aiRecommendations}`
+      if (![body.startDate, body.endDate].every(date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().startsWith(date))) {
+        return sendJson(response, 400, { message: 'Enter valid trip dates.' })
       }
+      const plan = await liveTrip(body)
 
       const trip = await Trip.create({
         userId: user._id,
@@ -521,7 +284,21 @@ const server = createServer(async (request, response) => {
       const user = await requireUser(request, response)
       if (!user) return
       const trips = await Trip.find({ userId: user._id }).sort({ createdAt: -1 }).lean()
-      return sendJson(response, 200, { trips })
+      return sendJson(response, 200, { trips: trips.map(tripForDisplay) })
+    }
+
+    const refreshMatch = url.pathname.match(/^\/api\/trips\/([a-f0-9]{24})\/refresh$/i)
+    if (request.method === 'POST' && refreshMatch) {
+      const user = await requireUser(request, response)
+      if (!user) return
+      const filter = { _id: refreshMatch[1], userId: user._id }
+      const saved = await Trip.findOne(filter).lean()
+      if (!saved) return sendJson(response, 404, { message: 'Trip not found.' })
+      const update = await liveTrip({ ...saved, startDate: saved.startDate.toISOString().slice(0, 10), endDate: saved.endDate.toISOString().slice(0, 10) })
+      delete update.itineraryId
+      const obsolete = Object.fromEntries(demoFields.map(key => [key, 1]))
+      const trip = await Trip.findOneAndUpdate(filter, { $set: update, $unset: obsolete }, { new: true }).lean()
+      return sendJson(response, 200, { trip })
     }
 
     const tripMatch = url.pathname.match(/^\/api\/trips\/([^/]+)$/)
@@ -530,11 +307,12 @@ const server = createServer(async (request, response) => {
       if (!user) return
       const trip = await Trip.findOne({ _id: tripMatch[1], userId: user._id }).lean()
       if (!trip) return sendJson(response, 404, { message: 'Trip not found.' })
-      return sendJson(response, 200, { trip })
+      return sendJson(response, 200, { trip: tripForDisplay(trip) })
     }
 
     return sendJson(response, 404, { message: 'Route not found.' })
   } catch (error) {
+    if (error instanceof LookupError) return sendJson(response, error.status, { message: error.message })
     console.error(error)
     return sendJson(response, 500, { message: 'Something went wrong. Please try again.' })
   }

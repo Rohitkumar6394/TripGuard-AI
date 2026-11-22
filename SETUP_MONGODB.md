@@ -29,10 +29,10 @@ You can view the database with MongoDB Compass.
 
 ## 2. Backend setup
 
-Open terminal:
+Open a terminal at the repository root with Node.js 24 or 26 and npm installed.
 ```bash
-cd "TripGuard AI/backend"
-npm install
+cd backend
+npm ci
 ```
 
 Copy `.env.example` to `.env` and update `MONGODB_URI` and `TOKEN_SECRET`.
@@ -60,10 +60,10 @@ It should return:
 
 ## 3. Frontend setup
 
-Open another terminal:
+Open another terminal at the repository root.
 ```bash
-cd "TripGuard AI/frontend"
-npm install
+cd frontend
+npm ci
 npm run dev
 ```
 
@@ -99,11 +99,9 @@ Stores:
 - people
 - preferences
 - generated itinerary
-- hotels
+- mapped resorts, hotels, stores and attractions
 - weather insight
-- transport details
-- cost predictor
-- recommendations
+- listing lookup time
 - createdAt / updatedAt
 
 No manual collection creation is required.
@@ -138,7 +136,7 @@ POST /api/trips
   ↓
 Backend validates data
   ↓
-Backend generates itinerary/budget/hotel data
+Backend looks up destination listings and weather
   ↓
 MongoDB saves the trip
   ↓
@@ -150,4 +148,4 @@ Frontend displays the saved result
 - Never put `MONGODB_URI` inside the React frontend.
 - Never commit `backend/.env` to GitHub.
 - Change `TOKEN_SECRET` before deployment.
-- The current trip generator is deterministic demo logic. A real AI/LLM provider can be connected later without changing the MongoDB structure.
+- Live lookups require internet access.
